@@ -2,10 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { ClassroomGrade, CourseActivity, LearnerProfile } from '../types';
+import { ClassroomGrade, CourseActivity, LearnerProfile, Role } from '../types';
 import { initializeFirestoreDefaults } from '../services/dbInit';
 
 const GOOGLE_TOKEN_KEY = 'accessilearn_google_token';
+const ONLINE_STATUS_PERSISTENCE_SECONDS = 30;
+
+const ADMIN_EMAIL = 'ftluzano@paterostechnologicalcollege.edu.ph';
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +19,7 @@ interface AuthContextType {
   classroomLastSync: string | null;
   isLoading: boolean;
   authError: string | null;
+  isAdmin: boolean;
   loginWithGoogle: () => Promise<void>;
   syncGoogleClassroom: () => Promise<void>;
   updateLearnerProfile: (data: Partial<LearnerProfile>) => Promise<void>;
@@ -80,6 +84,8 @@ const normalizeClassroomGrades = (grades: any[]): ClassroomGrade[] =>
     alternateLink: grade.alternateLink,
   }));
 
+const getRoleForEmail = (email?: string | null): Role => email === ADMIN_EMAIL ? 'admin' : 'learner';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
@@ -91,6 +97,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    const setPresence = async (currentUser: User | null, isOnline: boolean) => {
+      if (!currentUser || !currentUser.email) return;
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        isOnline,
+        lastSeenAt: new Date().toISOString(),
+      }, { merge: true });
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -98,26 +113,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           await initializeFirestoreDefaults();
 
+          const role = getRoleForEmail(currentUser.email);
+          const userRef = doc(db, 'users', currentUser.uid);
+          const authProfile: LearnerProfile = {
+            id: currentUser.uid,
+            learner_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Learner',
+            email: currentUser.email || '',
+            educational_need: 'General / Control Group',
+            assistive_tech: [],
+            grade_level: '',
+            profile_setup_completed: false,
+            experience_level: 'Intermediate',
+            isResearcher: role === 'researcher' || role === 'admin',
+            role,
+            createdAt: new Date().toISOString(),
+          };
+
+          await setDoc(userRef, {
+            id: currentUser.uid,
+            learner_name: authProfile.learner_name,
+            email: authProfile.email,
+            role,
+            isOnline: true,
+            lastSeenAt: new Date().toISOString(),
+            createdAt: authProfile.createdAt,
+          }, { merge: true });
+
           const ref = doc(db, 'learners', currentUser.uid);
           const snap = await getDoc(ref);
           if (snap.exists()) {
             const data = snap.data() as LearnerProfile;
-            setLearnerProfile({ ...data, id: currentUser.uid, profile_setup_completed: data.profile_setup_completed ?? false });
+            setLearnerProfile({ ...data, ...authProfile, id: currentUser.uid, profile_setup_completed: data.profile_setup_completed ?? false });
           } else {
-            const initialProfile: LearnerProfile = {
-              id: currentUser.uid,
-              learner_name: currentUser.displayName || 'Learner',
-              email: currentUser.email || '',
-              educational_need: 'Visual Impairment',
-              assistive_tech: ['Screen Reader (NVDA/JAWS/TalkBack)', 'High Contrast Display'],
-              grade_level: '',
-              profile_setup_completed: false,
-              experience_level: 'Intermediate',
-              isResearcher: currentUser.email === 'kyledesillarico@gmail.com',
-              createdAt: new Date().toISOString(),
-            };
-            await setDoc(ref, initialProfile);
-            setLearnerProfile(initialProfile);
+            await setDoc(ref, authProfile);
+            setLearnerProfile(authProfile);
           }
         } catch (error: any) {
           console.error('Firestore learner profile error:', error);
@@ -130,10 +159,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             grade_level: '',
             profile_setup_completed: false,
             experience_level: 'Intermediate',
-            isResearcher: currentUser.email === 'kyledesillarico@gmail.com',
+            isResearcher: currentUser.email === ADMIN_EMAIL,
+            role: getRoleForEmail(currentUser.email),
           });
         }
 
+        const visibilityHandler = () => setPresence(currentUser, !document.hidden);
+        const unloadHandler = () => setPresence(currentUser, false);
+        document.addEventListener('visibilitychange', visibilityHandler);
+        window.addEventListener('beforeunload', unloadHandler);
+        await setPresence(currentUser, true);
+
+        const onlineInterval = window.setInterval(() => {
+          setPresence(currentUser, !document.hidden);
+        }, ONLINE_STATUS_PERSISTENCE_SECONDS * 1000);
+
+        return () => {
+          window.clearInterval(onlineInterval);
+          document.removeEventListener('visibilitychange', visibilityHandler);
+          window.removeEventListener('beforeunload', unloadHandler);
+          setPresence(currentUser, false);
+        };
       } else {
         setLearnerProfile(null);
         setClassroomActivities([]);
@@ -240,10 +286,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setClassroomActivities([]);
       setClassroomGrades([]);
       setClassroomLastSync(null);
+      if (auth.currentUser?.uid) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), { isOnline: false, lastSeenAt: new Date().toISOString() }, { merge: true });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
+
+  const isAdmin = Boolean(user && learnerProfile?.role === 'admin');
 
   return (
     <AuthContext.Provider
@@ -256,6 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         classroomLastSync,
         isLoading,
         authError,
+        isAdmin,
         loginWithGoogle,
         syncGoogleClassroom,
         updateLearnerProfile,

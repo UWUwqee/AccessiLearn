@@ -27,7 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openSurveyModal,
   openAccessibilityModal,
 }) => {
-  const { learnerProfile, logout, user } = useAuth();
+  const { learnerProfile, logout, user, isAdmin } = useAuth();
   const { announce } = useAccessibility();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -137,13 +137,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-slate-600 text-[11px] truncate">{user?.email}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         <span className="inline-block px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10px] font-bold">
-                          {learnerProfile?.educational_need || 'SEN Learner'}
+                          {learnerProfile?.role || 'learner'}
                         </span>
                         <span className="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold">
-                          {learnerProfile?.grade_level || 'Student'}
+                          {learnerProfile?.educational_need || 'SEN Learner'}
                         </span>
                       </div>
                     </div>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          setCurrentTab('dashboard');
+                        }}
+                        className="mb-2 w-full text-left px-3 py-2 text-indigo-700 hover:bg-indigo-50 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                        role="menuitem"
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Open admin panel</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {

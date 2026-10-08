@@ -17,6 +17,7 @@ export type AssistiveTech =
   | 'Reading Ruler / Focus Aid';
 
 export type ExperienceLevel = 'Beginner' | 'Intermediate' | 'Advanced';
+export type Role = 'learner' | 'instructor' | 'researcher' | 'admin';
 
 export interface LearnerProfile {
   id: string;
@@ -29,6 +30,28 @@ export interface LearnerProfile {
   experience_level: ExperienceLevel;
   createdAt?: string;
   isResearcher?: boolean;
+  role?: Role;
+}
+
+export interface UserAccount {
+  id: string;
+  learner_name: string;
+  email: string;
+  role: Role;
+  educational_need?: EducationalNeed;
+  grade_level?: string;
+  isOnline: boolean;
+  lastSeenAt?: string;
+  createdAt?: string;
+}
+
+export interface AnnouncementDoc {
+  id: string;
+  title: string;
+  author: string;
+  date?: string;
+  content: string;
+  createdAt?: string;
 }
 
 export interface LMSFeatureItem {

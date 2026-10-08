@@ -12,10 +12,11 @@ import { CommunicationInterface } from './components/lms/CommunicationInterface'
 import { GradesViewer } from './components/lms/GradesViewer';
 import { ResearcherDashboard } from './components/researcher/ResearcherDashboard';
 import { EvaluationModal } from './components/evaluation/EvaluationModal';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { BriefcaseBusiness, GraduationCap, ShieldCheck, SlidersHorizontal, Loader2, School, UserRound } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { user, learnerProfile, updateLearnerProfile, logout, isLoading } = useAuth();
+  const { user, learnerProfile, updateLearnerProfile, logout, isLoading, isAdmin } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [surveyModalOpen, setSurveyModalOpen] = useState<boolean>(false);
   const [accessibilityModalOpen, setAccessibilityModalOpen] = useState<boolean>(false);
@@ -33,6 +34,10 @@ const AppContent: React.FC = () => {
 
   if (!user) {
     return <AuthScreen />;
+  }
+
+  if (isAdmin) {
+    return <AdminDashboard />;
   }
 
   if (!learnerProfile || !learnerProfile.profile_setup_completed || !['High School', 'College', 'Working'].includes(learnerProfile.grade_level)) {

@@ -25,9 +25,14 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == "ftluzano@paterostechnologicalcollege.edu.ph" ||
         request.auth.token.email == "kyledesillarico@gmail.com" ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
+    }
+
+    function isValidRole(data) {
+      return data.role is string && data.role in ['learner', 'instructor', 'researcher', 'admin'];
     }
 
     // Validation for Learner Profile
@@ -88,19 +93,36 @@ service cloud.firestore {
              data.content is string && data.content.size() > 0 && data.content.size() <= 1000;
     }
 
-    // 1. Learners Collection
-    match /learners/{learnerId} {
-      allow get: if isSignedIn() && (request.auth.uid == learnerId || isAdmin());
-      allow list: if isSignedIn() && isAdmin();
-      allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
+    // 1. User directory
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        incoming().keys().hasOnly(['id', 'learner_name', 'email', 'role', 'isOnline', 'lastSeenAt', 'createdAt']) &&
+        incoming().email == request.auth.token.email &&
+        incoming().role in ['learner', 'admin'] &&
+        isValidRole(incoming());
       allow update: if isSignedIn() && (
-        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'profile_setup_completed', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'createdAt'])) ||
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'email', 'isOnline', 'lastSeenAt'])) ||
         isAdmin()
       );
       allow delete: if isAdmin();
     }
 
-    // 2. LMS Features
+    // 2. Learners Collection
+    match /learners/{learnerId} {
+      allow get: if isSignedIn() && (request.auth.uid == learnerId || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
+      allow update: if isSignedIn() && (
+        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'profile_setup_completed', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'role', 'createdAt'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 3. LMS Features
     match /lms_features/{featureId} {
       allow get, list: if isSignedIn();
       allow create, update: if isSignedIn() && isValidFeature(incoming());
