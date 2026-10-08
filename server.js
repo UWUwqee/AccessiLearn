@@ -58,18 +58,22 @@ app.post('/api/google/classroom', async (req, res) => {
   }
 
   try {
-    const coursePayload = await proxyGoogleApi('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&maxResults=10', token);
+    const coursePayload = await proxyGoogleApi('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&pageSize=10', token);
     const courses = Array.isArray(coursePayload.courses) ? coursePayload.courses : [];
     const tasks = [];
+    const grades = [];
 
     for (const course of courses.slice(0, 3)) {
-      const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&maxResults=5`;
+      const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=5`;
       const courseworkPayload = await proxyGoogleApi(courseworkUrl, token);
       const works = Array.isArray(courseworkPayload.courseWork) ? courseworkPayload.courseWork : [];
 
       for (const work of works) {
         const dueDate = work.dueDate || null;
         let dueDateText = 'No due date';
+        const submissionUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/${work.id}/studentSubmissions?userId=me&pageSize=1`;
+        const submissionPayload = await proxyGoogleApi(submissionUrl, token);
+        const submission = submissionPayload.studentSubmissions?.[0];
 
         if (dueDate && dueDate.year && dueDate.month && dueDate.day) {
           dueDateText = new Date(dueDate.year, dueDate.month - 1, dueDate.day).toLocaleDateString(undefined, {
@@ -87,11 +91,23 @@ app.post('/api/google/classroom', async (req, res) => {
           due_date: dueDateText,
           points: work.maxPoints ?? 100,
           accessible_formats: ['Readable text', 'Speech-friendly format', 'Accessible submission'],
+          alternateLink: work.alternateLink || null,
+        });
+
+        grades.push({
+          id: `${course.id}-${work.id}`,
+          course: course.name || 'Google Classroom',
+          title: work.title || 'Untitled activity',
+          due_date: dueDateText,
+          max_points: typeof work.maxPoints === 'number' ? work.maxPoints : null,
+          state: submission?.state || 'NEW',
+          assigned_grade: typeof submission?.assignedGrade === 'number' ? submission.assignedGrade : undefined,
+          alternateLink: work.alternateLink || null,
         });
       }
     }
 
-    return res.json({ tasks });
+    return res.json({ tasks, grades });
   } catch (error) {
     console.error('Google Classroom fetch error:', error);
     return res.status(500).json({

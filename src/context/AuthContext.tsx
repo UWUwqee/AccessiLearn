@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { CourseActivity, LearnerProfile } from '../types';
+import { ClassroomGrade, CourseActivity, LearnerProfile } from '../types';
 import { initializeFirestoreDefaults } from '../services/dbInit';
 
 const GOOGLE_TOKEN_KEY = 'accessilearn_google_token';
@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   learnerProfile: LearnerProfile | null;
   classroomActivities: CourseActivity[];
+  classroomGrades: ClassroomGrade[];
   isClassroomSyncing: boolean;
   classroomLastSync: string | null;
   isLoading: boolean;
@@ -64,12 +65,26 @@ const normalizeClassroomTasks = (tasks: any[]): CourseActivity[] =>
     due_date: task.due_date || 'No due date',
     points: task.points ?? 100,
     accessible_formats: task.accessible_formats || ['Readable text', 'Speech-friendly format'],
+    alternateLink: task.alternateLink,
+  }));
+
+const normalizeClassroomGrades = (grades: any[]): ClassroomGrade[] =>
+  grades.map((grade, index) => ({
+    id: grade.id || `classroom-grade-${index}`,
+    course: grade.course || 'Google Classroom',
+    title: grade.title || 'Untitled activity',
+    due_date: grade.due_date || 'No due date',
+    max_points: typeof grade.max_points === 'number' ? grade.max_points : null,
+    state: grade.state || 'NEW',
+    assigned_grade: typeof grade.assigned_grade === 'number' ? grade.assigned_grade : undefined,
+    alternateLink: grade.alternateLink,
   }));
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
   const [classroomActivities, setClassroomActivities] = useState<CourseActivity[]>([]);
+  const [classroomGrades, setClassroomGrades] = useState<ClassroomGrade[]>([]);
   const [isClassroomSyncing, setIsClassroomSyncing] = useState(false);
   const [classroomLastSync, setClassroomLastSync] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -120,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setLearnerProfile(null);
         setClassroomActivities([]);
+        setClassroomGrades([]);
         setClassroomLastSync(null);
       }
       setIsLoading(false);
@@ -156,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setClassroomActivities(normalizeClassroomTasks(classroomData.tasks || []));
+      setClassroomGrades(normalizeClassroomGrades(classroomData.grades || []));
       setClassroomLastSync(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     } catch (error: any) {
       const msg = error?.message || 'Google Classroom sync failed.';
@@ -216,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setLearnerProfile(null);
       setClassroomActivities([]);
+      setClassroomGrades([]);
       setClassroomLastSync(null);
     } catch (error) {
       console.error('Logout error:', error);
@@ -228,6 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         learnerProfile,
         classroomActivities,
+        classroomGrades,
         isClassroomSyncing,
         classroomLastSync,
         isLoading,

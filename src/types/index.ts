@@ -90,6 +90,18 @@ export interface CourseActivity {
   due_date: string;
   points: number;
   accessible_formats: string[];
+  alternateLink?: string;
+}
+
+export interface ClassroomGrade {
+  id: string;
+  course: string;
+  title: string;
+  due_date: string;
+  max_points: number | null;
+  state: string;
+  assigned_grade?: number;
+  alternateLink?: string;
 }
 
 export interface ActivitySubmission {
