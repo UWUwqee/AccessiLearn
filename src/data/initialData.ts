@@ -1,4 +1,4 @@
-import { CourseActivity, LMSFeatureItem } from '../types';
+import { LMSFeatureItem } from '../types';
 
 export const LMS_A11Y_FEATURES: LMSFeatureItem[] = [
   {
@@ -63,42 +63,6 @@ export const LMS_A11Y_FEATURES: LMSFeatureItem[] = [
     wcag_criterion: 'WCAG 2.2 SC 1.3.1 (Info and Relationships), SC 2.4.10 (Section Headings)',
     category: 'Accessibility Support',
     status: 'Active',
-  },
-];
-
-export const SAMPLE_ACTIVITIES: CourseActivity[] = [
-  {
-    id: 'act-101',
-    title: 'Laboratory Activity 1: Evaluating Digital Barriers in Educational Software',
-    module: 'Module 1: Principles of Universal Design for Learning (UDL)',
-    instructions: `### Objective
-Analyze an online educational interface and identify at least three accessibility barriers according to Republic Act No. 11650 and WCAG 2.2 criteria.
-
-### Tasks to Complete:
-1. Examine the navigation menu, multimedia elements, and color contrast.
-2. Verify whether alternative text exists for all instructional diagrams.
-3. Formulate two design recommendations that would assist learners with visual, auditory, or motor impairments.
-
-### Submission Guidelines:
-Submit your analysis in the response text box below or attach a document. Assistive voice notes or bullet-point responses are fully accepted.`,
-    due_date: 'October 24, 2026 at 11:59 PM',
-    points: 50,
-    accessible_formats: ['Screen Reader Formatted Text', 'Audio Transcription Ready', 'Large Print View'],
-  },
-  {
-    id: 'act-102',
-    title: 'Assignment 2: Drafting Accessible Multi-Modal Content for SEN Students',
-    module: 'Module 2: Assistive Technologies and Multi-Modal Learning',
-    instructions: `### Objective
-Design a short 3-slide lesson plan or outline that integrates closed captioning, descriptive image alt text, and keyboard navigation shortcuts.
-
-### Requirements:
-- Step 1: Write explicit descriptive text for an instructional image.
-- Step 2: Provide a transcript snippet with timestamps.
-- Step 3: Explain how a student utilizing a screen magnifier or single-switch device interacts with the content.`,
-    due_date: 'November 05, 2026 at 11:59 PM',
-    points: 100,
-    accessible_formats: ['Rich Plain Text', 'Audio Summary Available'],
   },
 ];
 

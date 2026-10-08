@@ -197,7 +197,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: 'Learning Materials', icon: BookOpen, action: () => onNavigate('materials'), tone: 'bg-blue-100 text-blue-700', accent: 'text-blue-700' },
-          { label: 'Activity submissions', icon: FileCheck2, action: () => onNavigate('activities'), tone: 'bg-amber-100 text-amber-700', accent: 'text-amber-700' },
+          { label: 'Classroom assignments', icon: FileCheck2, action: () => onNavigate('activities'), tone: 'bg-amber-100 text-amber-700', accent: 'text-amber-700' },
           { label: 'Messages', icon: MessageSquare, action: () => onNavigate('communication'), tone: 'bg-purple-100 text-purple-700', accent: 'text-purple-700' },
           { label: 'Grades', icon: Award, action: () => onNavigate('grades'), tone: 'bg-emerald-100 text-emerald-700', accent: 'text-emerald-700' },
         ].map(({ label, icon: Icon, action, tone, accent }) => (

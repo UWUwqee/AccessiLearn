@@ -83,7 +83,7 @@ app.post('/api/google/classroom', async (req, res) => {
             submission = submissionPayload.studentSubmissions?.[0] || null;
           } catch (error) {
             if (error.status !== 403) throw error;
-            gradeError = 'Google Classroom denied access to your submission status or grades. Sign out, sign back in, and grant the requested coursework permission.';
+            gradeError = 'Google Classroom denied access to your submission status or grades. Sign out, sign back in, and grant the requested student-submissions permission.';
           }
         }
 
@@ -96,7 +96,7 @@ app.post('/api/google/classroom', async (req, res) => {
         }
 
         tasks.push({
-          id: work.id || `${course.id}-${Math.random().toString(36).slice(2)}`,
+          id: `${course.id}-${work.id}`,
           title: work.title || 'Untitled activity',
           module: course.name || 'Google Classroom',
           instructions: work.description || 'No description provided for this activity yet.',

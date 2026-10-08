@@ -190,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
-      provider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
+      provider.addScope('https://www.googleapis.com/auth/classroom.student-submissions.me.readonly');
       provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
       provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
       provider.addScope('https://www.googleapis.com/auth/userinfo.email');
