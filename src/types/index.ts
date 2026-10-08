@@ -25,6 +25,7 @@ export interface LearnerProfile {
   educational_need: EducationalNeed;
   assistive_tech: AssistiveTech[];
   grade_level: string;
+  profile_setup_completed?: boolean;
   experience_level: ExperienceLevel;
   createdAt?: string;
   isResearcher?: boolean;

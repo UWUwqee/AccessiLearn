@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const snap = await getDoc(ref);
           if (snap.exists()) {
             const data = snap.data() as LearnerProfile;
-            setLearnerProfile({ ...data, id: currentUser.uid });
+            setLearnerProfile({ ...data, id: currentUser.uid, profile_setup_completed: data.profile_setup_completed ?? false });
           } else {
             const initialProfile: LearnerProfile = {
               id: currentUser.uid,
@@ -110,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: currentUser.email || '',
               educational_need: 'Visual Impairment',
               assistive_tech: ['Screen Reader (NVDA/JAWS/TalkBack)', 'High Contrast Display'],
-              grade_level: 'College / Senior High',
+              grade_level: '',
+              profile_setup_completed: false,
               experience_level: 'Intermediate',
               isResearcher: currentUser.email === 'kyledesillarico@gmail.com',
               createdAt: new Date().toISOString(),
@@ -126,7 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: currentUser.email || '',
             educational_need: 'General / Control Group',
             assistive_tech: [],
-            grade_level: 'College Student',
+            grade_level: '',
+            profile_setup_completed: false,
             experience_level: 'Intermediate',
             isResearcher: currentUser.email === 'kyledesillarico@gmail.com',
           });
@@ -219,12 +221,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateLearnerProfile = async (data: Partial<LearnerProfile>) => {
     if (!user || !learnerProfile) return;
     const updated = { ...learnerProfile, ...data };
-    setLearnerProfile(updated);
     try {
       const ref = doc(db, 'learners', user.uid);
       await setDoc(ref, updated, { merge: true });
+      setLearnerProfile(updated);
     } catch (e) {
       console.error('Error updating profile in Firestore:', e);
+      throw e;
     }
   };
 
