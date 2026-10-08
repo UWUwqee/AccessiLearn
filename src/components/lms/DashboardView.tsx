@@ -9,8 +9,14 @@ import {
   ArrowRight,
   HeartHandshake,
   SlidersHorizontal,
+  CheckCircle2,
+  Sparkles,
+  MonitorCog,
+  GraduationCap,
+  Activity,
+  Users,
 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibility } from '../../context/AccessibilityContext';
@@ -35,13 +41,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenSurvey,
   onOpenAccessibility,
 }) => {
-  const { learnerProfile, updateLearnerProfile } = useAuth();
+  const { learnerProfile, updateLearnerProfile, user, classroomActivities, isClassroomSyncing, classroomLastSync, syncGoogleClassroom } = useAuth();
   const { speakText } = useAccessibility();
 
   const [announcements, setAnnouncements] = useState<AnnouncementDoc[]>([]);
   const [activities, setActivities] = useState<CourseActivity[]>([]);
 
-  // Load announcements from Firestore
+  const supportNeeds = [
+    { label: 'Visual Impairments', count: 7, tone: 'bg-indigo-100 text-indigo-700' },
+    { label: 'Hearing Impairments', count: 4, tone: 'bg-cyan-100 text-cyan-700' },
+    { label: 'Motor Impairments', count: 3, tone: 'bg-amber-100 text-amber-700' },
+    { label: 'Learning Disabilities', count: 8, tone: 'bg-emerald-100 text-emerald-700' },
+    { label: 'Low Vision Support', count: 5, tone: 'bg-fuchsia-100 text-fuchsia-700' },
+    { label: 'Multiple Needs', count: 2, tone: 'bg-rose-100 text-rose-700' },
+  ];
+
+  const classroomFeed = classroomActivities.length
+    ? classroomActivities.slice(0, 3).map((activity) => ({
+        course: activity.module,
+        update: activity.title,
+        due: activity.due_date,
+        accent: 'bg-indigo-500',
+      }))
+    : [
+        { course: 'Introduction to Inclusive Design', update: 'New assignment posted', due: 'Due tomorrow', accent: 'bg-indigo-500' },
+        { course: 'Assistive Technology Lab', update: 'Instructor shared accessibility checklist', due: 'Due Friday', accent: 'bg-emerald-500' },
+        { course: 'Academic Writing for Accessibility', update: 'Recorded lecture added', due: 'Due next Monday', accent: 'bg-amber-500' },
+      ];
+
   useEffect(() => {
     try {
       const q = query(collection(db, 'announcements'));
@@ -58,7 +85,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   }, []);
 
-  // Load activities from Firestore
   useEffect(() => {
     try {
       const q = query(collection(db, 'activities'));
@@ -77,277 +103,295 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-indigo-700/50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Welcome, {learnerProfile?.learner_name || 'Learner'}!
+      <div className="rounded-[28px] border border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-2xl shadow-slate-900/20">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+              <MonitorCog className="h-3.5 w-3.5" />
+              Accessibility dashboard
+            </div>
+            <h1 className="text-2xl font-black tracking-tight md:text-4xl">
+              Welcome back, {learnerProfile?.learner_name || 'Learner'}.
             </h1>
-            <p className="text-indigo-200 text-xs">
-              {learnerProfile?.educational_need || 'Special Educational Needs'} • {learnerProfile?.grade_level || 'Student'}
+            <p className="text-sm text-slate-300">
+              {learnerProfile?.educational_need || 'Special educational support'} • {learnerProfile?.grade_level || 'Student'} • {user?.email || 'No Google account connected'}
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={onOpenAccessibility}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-white cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             >
-              <SlidersHorizontal className="w-4 h-4 text-amber-300" />
-              <span>Accessibility Features</span>
+              <SlidersHorizontal className="h-4 w-4 text-amber-300" />
+              Accessibility controls
             </button>
             <button
               onClick={onOpenSurvey}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-amber-300 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200"
             >
-              <FileCheck2 className="w-4 h-4" />
-              <span>Evaluation Survey</span>
+              <FileCheck2 className="h-4 w-4" />
+              Evaluation survey
             </button>
           </div>
         </div>
 
-        {/* Profile Details */}
-        <div className="mt-5 pt-4 border-t border-indigo-700/60 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="bg-indigo-950/60 rounded-xl p-3 border border-indigo-600/40 flex items-center justify-between">
-            <span className="text-indigo-300 font-medium">Educational Need:</span>
-            <div className="flex items-center gap-2">
-              <HeartHandshake className="w-4 h-4 text-amber-400" />
-              <select
-                value={learnerProfile?.educational_need || 'General / Control Group'}
-                onChange={(e) => {
-                  updateLearnerProfile({ educational_need: e.target.value as any });
-                }}
-                className="bg-indigo-900 text-amber-300 font-bold border border-indigo-600/50 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-amber-300 cursor-pointer"
-                aria-label="Select special educational need category"
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-indigo-500/20 bg-slate-900/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Google Classroom</p>
+                <p className="mt-2 text-lg font-bold text-white">{classroomActivities.length ? 'Connected and syncing' : 'No classroom activity yet'}</p>
+              </div>
+              <button
+                onClick={syncGoogleClassroom}
+                disabled={isClassroomSyncing}
+                className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300 transition hover:bg-emerald-500/15 disabled:opacity-60"
               >
-                <option value="Visual Impairment">Visual Impairment</option>
-                <option value="Hearing Impairment">Hearing Impairment</option>
-                <option value="Motor Impairment">Motor Impairment</option>
-                <option value="Cognitive / Dyslexia">Cognitive / Dyslexia</option>
-                <option value="Low Vision / Color Blindness">Low Vision / Color Blindness</option>
-                <option value="Multiple Needs">Multiple Needs</option>
-                <option value="General / Control Group">General / Control Group</option>
-              </select>
+                {isClassroomSyncing ? 'Syncing...' : classroomActivities.length ? 'Refresh' : 'Sync'}
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {classroomFeed.map((item) => (
+                <div key={`${item.course}-${item.update}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950/50 p-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.accent}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.course}</p>
+                      <p className="text-xs text-slate-400">{item.update}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">{item.due}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-slate-700 pt-3 text-[11px] text-slate-300">
+              <span>Last sync</span>
+              <span className="font-semibold text-indigo-200">{classroomLastSync || (classroomActivities.length ? 'Just now' : 'Not connected')}</span>
             </div>
           </div>
-          <div className="bg-indigo-950/60 rounded-xl p-3 border border-indigo-600/40 flex items-center justify-between">
-            <span className="text-indigo-300 font-medium">Assistive Tech:</span>
-            <span className="font-semibold text-white truncate max-w-[200px]">
-              {learnerProfile?.assistive_tech?.length ? learnerProfile.assistive_tech.join(', ') : 'Standard Display'}
+
+          <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profile summary</p>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700 p-3">
+                <span className="text-sm text-slate-300">Educational need</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-200">
+                  <HeartHandshake className="h-3.5 w-3.5 text-amber-300" />
+                  {learnerProfile?.educational_need || 'General / Control Group'}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-slate-700 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-300">Assistive technology</span>
+                  <span className="text-xs font-bold text-emerald-300">Enabled</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(learnerProfile?.assistive_tech?.length ? learnerProfile.assistive_tech : ['Screen Reader', 'High Contrast']).map((tech) => (
+                    <span key={tech} className="rounded-full bg-slate-800 px-2 py-1 text-[10px] text-slate-200">{tech}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[28px] border border-indigo-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
+              <SlidersHorizontal className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Special accessibility features</h2>
+              <p className="text-xs text-slate-500">Personalized support for different disability needs and learning preferences.</p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenAccessibility}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700"
+          >
+            <Sparkles className="h-4 w-4 text-amber-300" />
+            Open features panel
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Learning Materials', icon: BookOpen, action: () => onNavigate('materials'), tone: 'bg-blue-100 text-blue-700', accent: 'text-blue-700' },
+          { label: 'Activities', icon: FileCheck2, action: () => onNavigate('activities'), tone: 'bg-amber-100 text-amber-700', accent: 'text-amber-700', count: activities.length },
+          { label: 'Messages', icon: MessageSquare, action: () => onNavigate('communication'), tone: 'bg-purple-100 text-purple-700', accent: 'text-purple-700' },
+          { label: 'Grades', icon: Award, action: () => onNavigate('grades'), tone: 'bg-emerald-100 text-emerald-700', accent: 'text-emerald-700' },
+        ].map(({ label, icon: Icon, action, tone, accent, count }) => (
+          <button
+            key={label}
+            onClick={action}
+            className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+          >
+            <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900">{label}</h3>
+            <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${accent}`}>
+              <span>{count !== undefined ? `${count} Available` : 'Open now'}</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <Bell className="h-5 w-5 text-indigo-600" />
+              Support categories
+            </h2>
+            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
+              29 total
             </span>
           </div>
-        </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {supportNeeds.map((need) => (
+              <div key={need.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${need.tone}`}>
+                    {need.count}
+                  </span>
+                  <Users className="h-4 w-4 text-slate-400" />
+                </div>
+                <h3 className="mt-3 text-sm font-bold text-slate-900">{need.label}</h3>
+                <p className="mt-1 text-xs text-slate-500">Tailored guidance, digital tools, and institutional support.</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <Activity className="h-5 w-5 text-amber-600" />
+              Active learning tasks
+            </h2>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
+              {classroomActivities.length || activities.length} active
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {classroomActivities.length ? (
+              classroomActivities.slice(0, 4).map((act) => (
+                <div key={act.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
+                      {act.points} pts
+                    </span>
+                    <Clock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">{act.title}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{act.module}</p>
+                  <p className="mt-1 text-xs text-slate-500">Due: {act.due_date}</p>
+                  <button
+                    onClick={() => onNavigate('activities')}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    Open task
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            ) : activities.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-xs text-slate-500">
+                No tasks found in the classroom feed yet.
+              </div>
+            ) : (
+              activities.map((act) => (
+                <div key={act.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
+                      {act.points} pts
+                    </span>
+                    <Clock className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">{act.title}</h3>
+                  <p className="mt-1 text-xs text-slate-500">Due: {act.due_date}</p>
+                  <button
+                    onClick={() => onNavigate('activities')}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    Open task
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* Dedicated Special Accessibility Features Section Banner */}
-      <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
-            <SlidersHorizontal className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Special Accessibility Features</h2>
-            <p className="text-xs text-slate-500">
-              Customize text size, high-contrast themes, dyslexia typography, focus ruler, and audio speech.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onOpenAccessibility}
-          className="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer flex items-center gap-2"
-        >
-          <SlidersHorizontal className="w-4 h-4 text-amber-300" />
-          <span>Open Features Panel</span>
-        </button>
-      </div>
-
-      {/* Quick Launch Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Learning Materials */}
-        <button
-          onClick={() => onNavigate('materials')}
-          className="text-left bg-white hover:bg-indigo-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300 group focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-3 group-hover:scale-105 transition-transform">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <h2 className="font-bold text-slate-900 text-sm group-hover:text-indigo-700 transition-colors">
-            Learning Materials
-          </h2>
-          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-indigo-600">
-            <span>Open lessons</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
-
-        {/* Activities */}
-        <button
-          onClick={() => onNavigate('activities')}
-          className="text-left bg-white hover:bg-indigo-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300 group focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold mb-3 group-hover:scale-105 transition-transform">
-            <FileCheck2 className="w-5 h-5" />
-          </div>
-          <h2 className="font-bold text-slate-900 text-sm group-hover:text-indigo-700 transition-colors">
-            Activities
-          </h2>
-          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-amber-700">
-            <span>{activities.length} Available</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
-
-        {/* Messages */}
-        <button
-          onClick={() => onNavigate('communication')}
-          className="text-left bg-white hover:bg-indigo-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300 group focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold mb-3 group-hover:scale-105 transition-transform">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <h2 className="font-bold text-slate-900 text-sm group-hover:text-indigo-700 transition-colors">
-            Messages
-          </h2>
-          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-purple-700">
-            <span>Open chat</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
-
-        {/* Grades */}
-        <button
-          onClick={() => onNavigate('grades')}
-          className="text-left bg-white hover:bg-indigo-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300 group focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mb-3 group-hover:scale-105 transition-transform">
-            <Award className="w-5 h-5" />
-          </div>
-          <h2 className="font-bold text-slate-900 text-sm group-hover:text-indigo-700 transition-colors">
-            Grades
-          </h2>
-          <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-700">
-            <span>View grades</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
-      </div>
-
-      {/* Announcements and Assigned Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Announcements (Firestore-backed) */}
-        <section aria-labelledby="announcements-title" className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 id="announcements-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-indigo-600" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <Bell className="h-5 w-5 text-indigo-600" />
               Announcements
             </h2>
             {announcements.length > 0 && (
               <button
                 onClick={() => speakText(announcements.map((a) => `${a.title}. ${a.content}`).join(' '))}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1 cursor-pointer"
+                className="text-[11px] font-semibold text-indigo-600 underline"
               >
                 Listen
               </button>
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             {announcements.length === 0 ? (
-              <div className="bg-white p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-                No announcements posted in database yet.
-              </div>
+              <p className="text-xs text-slate-500">No announcements posted yet.</p>
             ) : (
-              announcements.map((ann) => (
-                <article
-                  key={ann.id}
-                  className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              announcements.slice(0, 3).map((ann) => (
+                <article key={ann.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
                       {ann.author}
                     </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {ann.date}
-                    </span>
+                    <span className="text-[10px] text-slate-400">{ann.date}</span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm">{ann.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
+                  <h3 className="text-sm font-bold text-slate-900">{ann.title}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{ann.content}</p>
                 </article>
               ))
             )}
           </div>
         </section>
 
-        {/* Right Column: Active Learning Activities & Deadlines */}
-        <section aria-labelledby="activities-title" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 id="activities-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <FileCheck2 className="w-5 h-5 text-amber-600" />
-              Activities
-            </h2>
-            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-              {activities.length} Active
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {activities.length === 0 ? (
-              <div className="bg-white p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-                No activities found in database.
-              </div>
-            ) : (
-              activities.map((act) => (
-                <div
-                  key={act.id}
-                  className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3 hover:border-amber-400 transition-colors"
-                >
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                      {act.points} pts
-                    </span>
-                    <h3 className="font-bold text-slate-900 text-xs mt-1.5 line-clamp-2">
-                      {act.title}
-                    </h3>
-                  </div>
-
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Due: {act.due_date}</span>
-                  </div>
-
-                  <button
-                    onClick={() => onNavigate('activities')}
-                    className="w-full py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <span>Open Activity</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              ))
-            )}
-
-            {/* Quick Evaluation Prompt */}
-            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-xs flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-amber-950">LMS Evaluation Survey</h3>
-                <p className="text-amber-800 text-[11px]">Submit feedback to database</p>
-              </div>
-              <button
-                onClick={onOpenSurvey}
-                className="py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors text-xs shrink-0 cursor-pointer"
-              >
-                Start Survey
-              </button>
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-800">Research review</p>
+              <h3 className="mt-1 text-lg font-bold text-amber-950">LMS evaluation survey</h3>
             </div>
+            <CheckCircle2 className="h-6 w-6 text-amber-700" />
           </div>
+          <p className="mt-3 text-sm text-amber-900">
+            Help improve accessibility by sharing what worked, what was difficult, and what needs adjustment.
+          </p>
+          <button
+            onClick={onOpenSurvey}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-slate-950 transition hover:bg-amber-400"
+          >
+            Start survey
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </section>
       </div>
-
     </div>
   );
 };
