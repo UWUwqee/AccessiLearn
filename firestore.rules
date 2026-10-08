@@ -94,7 +94,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && isAdmin();
       allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
       allow update: if isSignedIn() && (
-        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'createdAt'])) ||
+        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'profile_setup_completed', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'createdAt'])) ||
         isAdmin()
       );
       allow delete: if isAdmin();
