@@ -6,9 +6,7 @@ import {
   FileCheck2,
   MessageSquare,
   Award,
-  ClipboardList,
   BarChart3,
-  SlidersHorizontal,
   LogOut,
   ChevronDown,
   User,
@@ -95,29 +93,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               })}
             </nav>
 
-            {/* Actions: Accessibility Section Button + Survey + Google Profile */}
+            {/* Actions + Google Profile */}
             <div className="flex items-center space-x-2.5">
-              
-              {/* Accessibility Features Section Button */}
-              <button
-                onClick={openAccessibilityModal}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white shadow-sm border border-indigo-400/40 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
-                aria-label="Open accessibility features and display controls"
-              >
-                <SlidersHorizontal className="w-4 h-4 text-amber-300" aria-hidden="true" />
-                <span className="hidden sm:inline">Accessibility</span>
-              </button>
-
-              {/* Evaluation Survey Button */}
-              <button
-                onClick={openSurveyModal}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 transition-transform active:scale-95 cursor-pointer"
-                aria-label="Open evaluation survey"
-              >
-                <ClipboardList className="w-4 h-4" aria-hidden="true" />
-                <span>Survey</span>
-              </button>
-
               {/* Connected Google Account & Profile */}
               <div className="relative">
                 <button

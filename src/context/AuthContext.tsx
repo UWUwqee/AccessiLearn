@@ -5,6 +5,8 @@ import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { CourseActivity, LearnerProfile } from '../types';
 import { initializeFirestoreDefaults } from '../services/dbInit';
 
+const GOOGLE_TOKEN_KEY = 'accessilearn_google_token';
+
 interface AuthContextType {
   user: User | null;
   learnerProfile: LearnerProfile | null;
@@ -21,6 +23,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getStoredGoogleToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(GOOGLE_TOKEN_KEY);
+};
+
+const setStoredGoogleToken = (token: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (token) sessionStorage.setItem(GOOGLE_TOKEN_KEY, token);
+  else sessionStorage.removeItem(GOOGLE_TOKEN_KEY);
+};
+
 const buildApiUrl = (path: string) => {
   const configuredBase = import.meta.env.VITE_API_BASE;
 
@@ -28,11 +41,11 @@ const buildApiUrl = (path: string) => {
     return `${configuredBase.replace(/\/$/, '')}${path}`;
   }
 
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return path;
+  if (typeof window !== 'undefined') {
+    return new URL(path, window.location.origin).toString();
   }
 
-  return `http://localhost:3001${path}`;
+  return path;
 };
 
 const formatClassroomDate = (value?: { year?: number; month?: number; day?: number } | null): string => {
@@ -116,7 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncGoogleClassroom = async () => {
-    if (!user?.email) {
+    const activeEmail = user?.email || auth.currentUser?.email;
+    const token = getStoredGoogleToken();
+
+    if (!activeEmail || !token) {
       setAuthError('Please sign in with a Google account before syncing classroom activity.');
       return;
     }
@@ -125,48 +141,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsClassroomSyncing(true);
       setAuthError(null);
 
-      const authUrlResponse = await fetch(buildApiUrl('/api/google/auth-url'));
-      const authUrlData = await authUrlResponse.json();
-
-      if (!authUrlResponse.ok || !authUrlData.url) {
-        throw new Error(authUrlData.error || 'Failed to prepare Google Classroom authorization.');
-      }
-
-      const popup = window.open(authUrlData.url, 'googleClassroomAuth', 'width=500,height=700');
-      if (!popup) {
-        throw new Error('Pop-up blocked. Please allow pop-ups to connect Google Classroom.');
-      }
-
-      const result = await new Promise<{ email: string }>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error('Google Classroom authorization timed out.')), 180000);
-
-        const handleMessage = (event: MessageEvent) => {
-          const payload = event.data;
-          if (!payload || payload.type !== 'google-classroom-auth') return;
-
-          window.clearTimeout(timeout);
-          window.removeEventListener('message', handleMessage);
-          if (payload.success) resolve({ email: payload.email });
-          else reject(new Error('Google Classroom authorization was cancelled.'));
-        };
-
-        window.addEventListener('message', handleMessage);
-
-        const checkPopup = window.setInterval(() => {
-          if (popup.closed) {
-            window.clearInterval(checkPopup);
-            window.clearTimeout(timeout);
-            window.removeEventListener('message', handleMessage);
-            reject(new Error('Google Classroom authorization window was closed before completion.'));
-          }
-        }, 500);
+      const classroomResponse = await fetch(buildApiUrl('/api/google/classroom'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
       });
 
-      if (!result.email) {
-        throw new Error('No Google account email was returned from Classroom authorization.');
-      }
-
-      const classroomResponse = await fetch(buildApiUrl(`/api/google/classroom?email=${encodeURIComponent(result.email)}`));
       const classroomData = await classroomResponse.json();
 
       if (!classroomResponse.ok) {
@@ -189,7 +171,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthError(null);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
+      provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
+      provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
+      provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      provider.addScope('openid');
+
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken || null;
+
+      if (!token) {
+        throw new Error('Google sign-in did not return an access token for Classroom sync.');
+      }
+
+      setStoredGoogleToken(token);
+
+      if (auth.currentUser?.email) {
+        await syncGoogleClassroom();
+      }
     } catch (error: any) {
       const msg = error?.message || 'Google authentication failed';
       setAuthError(msg);
@@ -212,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
+      setStoredGoogleToken(null);
       setUser(null);
       setLearnerProfile(null);
       setClassroomActivities([]);

@@ -35,7 +35,7 @@ service cloud.firestore {
       return data.keys().hasAll(['learner_name', 'educational_need', 'email']) &&
              data.learner_name is string && data.learner_name.size() > 0 && data.learner_name.size() <= 100 &&
              data.educational_need is string && data.educational_need.size() <= 100 &&
-             data.email is string && data.email.size() <= 100;
+             data.email is string && data.email.size() <= 200;
     }
 
     // Validation for LMS Features
@@ -90,11 +90,11 @@ service cloud.firestore {
 
     // 1. Learners Collection
     match /learners/{learnerId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (request.auth.uid == learnerId || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
       allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
       allow update: if isSignedIn() && (
-        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'assistive_tech', 'experience_level'])) ||
+        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'createdAt'])) ||
         isAdmin()
       );
       allow delete: if isAdmin();
@@ -109,21 +109,24 @@ service cloud.firestore {
 
     // 3. Accessibility Assessments
     match /accessibility_assessments/{assessmentId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidAssessment(incoming());
       allow update, delete: if isAdmin();
     }
 
     // 4. UX Evaluations
     match /user_experience_evaluations/{evalId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidUXEval(incoming());
       allow update, delete: if isAdmin();
     }
 
     // 5. Feedbacks
     match /feedbacks/{feedbackId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidFeedback(incoming());
       allow update, delete: if isAdmin();
     }
@@ -131,13 +134,15 @@ service cloud.firestore {
     // 6. Activities
     match /activities/{activityId} {
       allow get, list: if isSignedIn();
-      allow write: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // 7. Announcements
     match /announcements/{announcementId} {
       allow get, list: if isSignedIn();
-      allow write: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // 8. Submissions
@@ -146,7 +151,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidSubmission(incoming());
       allow update: if isSignedIn() && (
-        (resource.data.learner_id == request.auth.uid && resource.data.status != 'graded' && incoming().diff(existing()).affectedKeys().hasOnly(['response_text', 'attachment_name', 'submitted_at'])) ||
+        (resource.data.learner_id == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['response_text', 'attachment_name', 'submitted_at', 'status', 'feedback'])) ||
         isAdmin()
       );
       allow delete: if isAdmin();
@@ -154,15 +159,18 @@ service cloud.firestore {
 
     // 9. Messages
     match /messages/{messageId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && isValidMessage(incoming());
       allow update, delete: if isAdmin();
     }
 
     // 10. Evaluation Results
     match /evaluation_results/{resultId} {
-      allow get, list: if isSignedIn();
-      allow write: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
   }
 }

@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { google } from 'googleapis';
 
 dotenv.config();
 
@@ -15,20 +14,23 @@ const port = Number(process.env.PORT || 3001);
 const frontendUrl = process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
 const distPath = path.resolve(__dirname, 'dist');
 
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  console.warn('Google OAuth environment variables are not configured. Classroom sync will not work until they are set.');
+async function proxyGoogleApi(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json') ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    const message = typeof payload === 'string' ? payload : payload?.error?.message || 'Google API request failed';
+    throw new Error(message);
+  }
+
+  return payload;
 }
-
-const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
-  (process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL}/api/google/callback` : `http://localhost:${port}/api/google/callback`);
-
-const oauthClient = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  redirectUri
-);
-
-const tokenStore = new Map();
 
 app.use(
   cors({
@@ -38,117 +40,43 @@ app.use(
 );
 app.use(express.json());
 
-const classroomScopes = [
-  'https://www.googleapis.com/auth/classroom.courses.readonly',
-  'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
-  'https://www.googleapis.com/auth/classroom.rosters.readonly',
-  'openid',
-  'https://www.googleapis.com/auth/userinfo.email',
-];
-
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'AccessiLearn Classroom API' });
 });
 
 app.get('/api/google/auth-url', (_req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.status(500).json({
-      error: 'Google OAuth is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment.',
-    });
-  }
-
-  const authUrl = oauthClient.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    include_granted_scopes: true,
-    scope: classroomScopes,
+  return res.status(400).json({
+    error: 'This app uses Firebase Google sign-in with a direct access token instead of a custom OAuth redirect URL.'
   });
-
-  return res.json({ url: authUrl });
 });
 
-app.get('/api/google/callback', async (req, res) => {
-  const { code } = req.query;
+app.post('/api/google/classroom', async (req, res) => {
+  const token = req.body?.token || req.query?.token;
 
-  if (!code) {
-    return res.status(400).send('Missing authorization code.');
+  if (!token) {
+    return res.status(401).json({ error: 'Google access token is required.' });
   }
 
   try {
-    const { tokens } = await oauthClient.getToken(String(code));
-    oauthClient.setCredentials(tokens);
-
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauthClient });
-    const userInfo = await oauth2.userinfo.get();
-    const email = (userInfo.data.email || 'unknown').toLowerCase();
-
-    tokenStore.set(email, tokens);
-
-    const html = `<!DOCTYPE html>
-      <html>
-        <body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'google-classroom-auth',
-                success: true,
-                email: ${JSON.stringify(email)},
-              }, '*');
-            }
-            window.close();
-          </script>
-        </body>
-      </html>`;
-
-    return res.send(html);
-  } catch (error) {
-    console.error('OAuth callback error:', error);
-    return res.status(500).send('Failed to complete Google Classroom authorization.');
-  }
-});
-
-app.get('/api/google/classroom', async (req, res) => {
-  const email = String(req.query.email || '').toLowerCase();
-
-  if (!email || !tokenStore.has(email)) {
-    return res.status(401).json({ error: 'Google Classroom authorization is required before fetching classroom data.' });
-  }
-
-  try {
-    const tokens = tokenStore.get(email);
-    oauthClient.setCredentials(tokens);
-
-    const classroom = google.classroom({ version: 'v1', auth: oauthClient });
-    const coursesResponse = await classroom.courses.list({
-      courseStates: 'ACTIVE',
-      pageSize: 5,
-    });
-
-    const courses = Array.isArray(coursesResponse.data.courses) ? coursesResponse.data.courses : [];
+    const coursePayload = await proxyGoogleApi('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&maxResults=10', token);
+    const courses = Array.isArray(coursePayload.courses) ? coursePayload.courses : [];
     const tasks = [];
 
     for (const course of courses.slice(0, 3)) {
-      const courseworkResponse = await classroom.courses.courseWork.list({
-        courseId: course.id,
-        pageSize: 3,
-        orderBy: 'dueDate desc',
-      });
-
-      const works = Array.isArray(courseworkResponse.data.courseWork) ? courseworkResponse.data.courseWork : [];
+      const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&maxResults=5`;
+      const courseworkPayload = await proxyGoogleApi(courseworkUrl, token);
+      const works = Array.isArray(courseworkPayload.courseWork) ? courseworkPayload.courseWork : [];
 
       for (const work of works) {
-        const dueDate = work.dueDate || work.dueTime || null;
+        const dueDate = work.dueDate || null;
         let dueDateText = 'No due date';
 
-        if (dueDate) {
-          const { year, month, day } = dueDate;
-          if (year && month && day) {
-            dueDateText = new Date(year, month - 1, day).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            });
-          }
+        if (dueDate && dueDate.year && dueDate.month && dueDate.day) {
+          dueDateText = new Date(dueDate.year, dueDate.month - 1, dueDate.day).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          });
         }
 
         tasks.push({
@@ -167,7 +95,7 @@ app.get('/api/google/classroom', async (req, res) => {
   } catch (error) {
     console.error('Google Classroom fetch error:', error);
     return res.status(500).json({
-      error: 'Unable to fetch Google Classroom activity for this account.',
+      error: error.message || 'Unable to fetch Google Classroom activity for this account.',
     });
   }
 });

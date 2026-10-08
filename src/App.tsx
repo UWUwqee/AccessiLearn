@@ -82,16 +82,6 @@ const AppContent: React.FC = () => {
         }}
       />
 
-      {/* Quick Access Floating Button for Accessibility Features */}
-      <button
-        onClick={() => setAccessibilityModalOpen(true)}
-        className="fixed bottom-5 right-5 z-40 bg-indigo-600 hover:bg-indigo-700 text-white p-3.5 rounded-full shadow-2xl flex items-center gap-2 text-xs font-bold focus:outline-none focus:ring-4 focus:ring-indigo-300 active:scale-95 transition-all cursor-pointer border border-indigo-400/30"
-        aria-label="Open special accessibility features settings"
-      >
-        <SlidersHorizontal className="w-5 h-5 text-amber-300" aria-hidden="true" />
-        <span className="hidden sm:inline">Accessibility Controls</span>
-      </button>
-
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
