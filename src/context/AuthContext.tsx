@@ -173,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setClassroomActivities(normalizeClassroomTasks(classroomData.tasks || []));
       setClassroomGrades(normalizeClassroomGrades(classroomData.grades || []));
+      setAuthError(classroomData.gradeError || null);
       setClassroomLastSync(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     } catch (error: any) {
       const msg = error?.message || 'Google Classroom sync failed.';
@@ -189,6 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
+      provider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
       provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
       provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
       provider.addScope('https://www.googleapis.com/auth/userinfo.email');

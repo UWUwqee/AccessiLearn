@@ -77,7 +77,7 @@ export const GradesViewer: React.FC = () => {
   const classroomGradedItems = classroomGrades.filter((item) => typeof item.assigned_grade === 'number');
   const classroomSubmittedItems = classroomGrades.filter((item) => item.state === 'TURNED_IN' || item.state === 'RETURNED');
   const classroomOutstandingItems = classroomGrades.filter((item) =>
-    typeof item.assigned_grade !== 'number' && item.state !== 'TURNED_IN' && item.state !== 'RETURNED'
+    item.state === 'NEW' || item.state === 'CREATED' || item.state === 'RECLAIMED_BY_STUDENT'
   ).length;
   const gradedClassroomItemsWithMaximum = classroomGradedItems.filter((item) => item.max_points !== null && item.max_points > 0);
   const totalScore = gradedClassroomItemsWithMaximum.reduce((total, item) => total + (item.assigned_grade || 0), 0);
@@ -94,6 +94,8 @@ export const GradesViewer: React.FC = () => {
     if (item.state === 'TURNED_IN') return 'Submitted, awaiting grade';
     if (item.state === 'RETURNED') return 'Returned';
     if (item.state === 'RECLAIMED_BY_STUDENT') return 'Resubmission needed';
+    if (item.state === 'UNAVAILABLE') return 'Permission required';
+    if (item.state !== 'NEW' && item.state !== 'CREATED') return 'Status unavailable';
     return 'Not submitted';
   };
 
@@ -226,7 +228,7 @@ export const GradesViewer: React.FC = () => {
                         : <span className="font-normal italic text-slate-400">Not graded</span>}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[11px] font-bold ${typeof item.assigned_grade === 'number' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : item.state === 'TURNED_IN' || item.state === 'RETURNED' ? 'border-blue-200 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[11px] font-bold ${typeof item.assigned_grade === 'number' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : item.state === 'TURNED_IN' || item.state === 'RETURNED' ? 'border-blue-200 bg-blue-50 text-blue-800' : item.state === 'UNAVAILABLE' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
                         {getClassroomStatus(item)}
                       </span>
                     </td>

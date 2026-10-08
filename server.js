@@ -26,7 +26,9 @@ async function proxyGoogleApi(url, token) {
 
   if (!response.ok) {
     const message = typeof payload === 'string' ? payload : payload?.error?.message || 'Google API request failed';
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -62,6 +64,7 @@ app.post('/api/google/classroom', async (req, res) => {
     const courses = Array.isArray(coursePayload.courses) ? coursePayload.courses : [];
     const tasks = [];
     const grades = [];
+    let gradeError = null;
 
     for (const course of courses.slice(0, 3)) {
       const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=5`;
@@ -72,8 +75,17 @@ app.post('/api/google/classroom', async (req, res) => {
         const dueDate = work.dueDate || null;
         let dueDateText = 'No due date';
         const submissionUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/${work.id}/studentSubmissions?userId=me&pageSize=1`;
-        const submissionPayload = await proxyGoogleApi(submissionUrl, token);
-        const submission = submissionPayload.studentSubmissions?.[0];
+        let submission = null;
+
+        if (!gradeError) {
+          try {
+            const submissionPayload = await proxyGoogleApi(submissionUrl, token);
+            submission = submissionPayload.studentSubmissions?.[0] || null;
+          } catch (error) {
+            if (error.status !== 403) throw error;
+            gradeError = 'Google Classroom denied access to your submission status or grades. Sign out, sign back in, and grant the requested coursework permission.';
+          }
+        }
 
         if (dueDate && dueDate.year && dueDate.month && dueDate.day) {
           dueDateText = new Date(dueDate.year, dueDate.month - 1, dueDate.day).toLocaleDateString(undefined, {
@@ -100,14 +112,14 @@ app.post('/api/google/classroom', async (req, res) => {
           title: work.title || 'Untitled activity',
           due_date: dueDateText,
           max_points: typeof work.maxPoints === 'number' ? work.maxPoints : null,
-          state: submission?.state || 'NEW',
+          state: submission?.state || (gradeError ? 'UNAVAILABLE' : 'NEW'),
           assigned_grade: typeof submission?.assignedGrade === 'number' ? submission.assignedGrade : undefined,
           alternateLink: work.alternateLink || null,
         });
       }
     }
 
-    return res.json({ tasks, grades });
+    return res.json({ tasks, grades, gradeError });
   } catch (error) {
     console.error('Google Classroom fetch error:', error);
     return res.status(500).json({
