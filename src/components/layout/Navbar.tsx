@@ -10,7 +10,7 @@ import {
   ClipboardList,
   LogOut,
   ChevronDown,
-  User,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibility } from '../../context/AccessibilityContext';
@@ -40,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'grades', label: 'Grades', icon: Award },
     ...(learnerProfile?.role === 'instructor' ? [{ id: 'instructor', label: 'Instructor', icon: ClipboardList }] : []),
     ...(learnerProfile?.role === 'researcher' ? [{ id: 'researcher', label: 'Analytics', icon: BarChart3 }] : []),
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: ShieldCheck }] : []),
   ];
 
   const handleNavClick = (tabId: string, label: string) => {
@@ -151,12 +152,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <button
                         onClick={() => {
                           setProfileDropdownOpen(false);
-                          setCurrentTab('dashboard');
+                          setCurrentTab('admin');
                         }}
                         className="mb-2 w-full text-left px-3 py-2 text-indigo-700 hover:bg-indigo-50 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-colors"
                         role="menuitem"
                       >
-                        <User className="w-4 h-4" />
+                        <ShieldCheck className="w-4 h-4" />
                         <span>Open admin panel</span>
                       </button>
                     )}

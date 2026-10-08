@@ -44,11 +44,7 @@ const AppContent: React.FC = () => {
     return <AuthScreen />;
   }
 
-  if (isAdmin) {
-    return <AdminDashboard />;
-  }
-
-  if (!learnerProfile || !learnerProfile.profile_setup_completed || !['High School', 'College', 'Working'].includes(learnerProfile.grade_level)) {
+  if (!isAdmin && (!learnerProfile || !learnerProfile.profile_setup_completed || !['High School', 'College', 'Working'].includes(learnerProfile.grade_level))) {
     const educationOptions = [
       { value: 'High School', label: 'High School', description: 'I am currently in high school.', icon: School },
       { value: 'College', label: 'College', description: 'I am currently studying in college or university.', icon: GraduationCap },
@@ -177,6 +173,8 @@ const AppContent: React.FC = () => {
         {currentTab === 'instructor' && role === 'instructor' && <InstructorWorkspace />}
 
         {currentTab === 'researcher' && role === 'researcher' && <ResearcherDashboard />}
+
+        {currentTab === 'admin' && isAdmin && <AdminDashboard />}
       </main>
 
       {/* Dedicated Accessibility Features Section Modal */}
