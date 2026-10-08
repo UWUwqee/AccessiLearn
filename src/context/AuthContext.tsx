@@ -21,6 +21,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+
 const formatClassroomDate = (value?: { year?: number; month?: number; day?: number } | null): string => {
   if (!value) return 'No due date';
   const { year, month, day } = value;
@@ -28,51 +30,16 @@ const formatClassroomDate = (value?: { year?: number; month?: number; day?: numb
   return new Date(year, month - 1, day).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const getCourseworkFromGoogleClassroom = async (accessToken: string): Promise<CourseActivity[]> => {
-  const coursesRes = await fetch('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-
-  if (!coursesRes.ok) {
-    throw new Error('Unable to load Google Classroom courses.');
-  }
-
-  const coursesData = await coursesRes.json();
-  const courses = Array.isArray(coursesData.courses) ? coursesData.courses : [];
-
-  const tasks: CourseActivity[] = [];
-
-  for (const course of courses.slice(0, 3)) {
-    const courseworkRes = await fetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?orderBy=dueDate%20desc&maxResults=3`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-      },
-    });
-
-    if (!courseworkRes.ok) continue;
-
-    const courseworkData = await courseworkRes.json();
-    const works = Array.isArray(courseworkData.courseWork) ? courseworkData.courseWork : [];
-
-    works.forEach((work: any, index: number) => {
-      tasks.push({
-        id: `${course.id}-${work.id || index}`,
-        title: work.title || 'Untitled assignment',
-        module: course.name || 'Google Classroom',
-        instructions: work.description || 'No description provided for this activity yet.',
-        due_date: formatClassroomDate(work.dueDate || null),
-        points: work.maxPoints ?? 100,
-        accessible_formats: ['Readable text', 'Speech-friendly format', 'Accessible submission'],
-      });
-    });
-  }
-
-  return tasks;
-};
+const normalizeClassroomTasks = (tasks: any[]): CourseActivity[] =>
+  tasks.map((task, index) => ({
+    id: task.id || `classroom-${index}`,
+    title: task.title || 'Untitled activity',
+    module: task.module || 'Google Classroom',
+    instructions: task.instructions || 'No description provided for this activity yet.',
+    due_date: task.due_date || 'No due date',
+    points: task.points ?? 100,
+    accessible_formats: task.accessible_formats || ['Readable text', 'Speech-friendly format'],
+  }));
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -137,26 +104,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncGoogleClassroom = async () => {
+    if (!user?.email) {
+      setAuthError('Please sign in with a Google account before syncing classroom activity.');
+      return;
+    }
+
     try {
       setIsClassroomSyncing(true);
       setAuthError(null);
 
-      const provider = new GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
-      provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
-      provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
-      provider.setCustomParameters({ prompt: 'select_account' });
+      const authUrlResponse = await fetch(`${API_BASE}/api/google/auth-url`);
+      const authUrlData = await authUrlResponse.json();
 
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = credential?.accessToken;
-
-      if (!accessToken) {
-        throw new Error('Google account connected but no Classroom access token was returned.');
+      if (!authUrlResponse.ok || !authUrlData.url) {
+        throw new Error(authUrlData.error || 'Failed to prepare Google Classroom authorization.');
       }
 
-      const data = await getCourseworkFromGoogleClassroom(accessToken);
-      setClassroomActivities(data);
+      const popup = window.open(authUrlData.url, 'googleClassroomAuth', 'width=500,height=700');
+      if (!popup) {
+        throw new Error('Pop-up blocked. Please allow pop-ups to connect Google Classroom.');
+      }
+
+      const result = await new Promise<{ email: string }>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error('Google Classroom authorization timed out.')), 180000);
+
+        const handleMessage = (event: MessageEvent) => {
+          const payload = event.data;
+          if (!payload || payload.type !== 'google-classroom-auth') return;
+
+          window.clearTimeout(timeout);
+          window.removeEventListener('message', handleMessage);
+          if (payload.success) resolve({ email: payload.email });
+          else reject(new Error('Google Classroom authorization was cancelled.'));
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        const checkPopup = window.setInterval(() => {
+          if (popup.closed) {
+            window.clearInterval(checkPopup);
+            window.clearTimeout(timeout);
+            window.removeEventListener('message', handleMessage);
+            reject(new Error('Google Classroom authorization window was closed before completion.'));
+          }
+        }, 500);
+      });
+
+      if (!result.email) {
+        throw new Error('No Google account email was returned from Classroom authorization.');
+      }
+
+      const classroomResponse = await fetch(`${API_BASE}/api/google/classroom?email=${encodeURIComponent(result.email)}`);
+      const classroomData = await classroomResponse.json();
+
+      if (!classroomResponse.ok) {
+        throw new Error(classroomData.error || 'Unable to load Google Classroom activity.');
+      }
+
+      setClassroomActivities(normalizeClassroomTasks(classroomData.tasks || []));
       setClassroomLastSync(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     } catch (error: any) {
       const msg = error?.message || 'Google Classroom sync failed.';
@@ -172,21 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthError(null);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
-      provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
-      provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
-
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = credential?.accessToken;
-
-      if (!accessToken) {
-        throw new Error('No Google Classroom access token was returned for this account.');
-      }
-
-      const data = await getCourseworkFromGoogleClassroom(accessToken);
-      setClassroomActivities(data);
-      setClassroomLastSync(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       const msg = error?.message || 'Google authentication failed';
       setAuthError(msg);
