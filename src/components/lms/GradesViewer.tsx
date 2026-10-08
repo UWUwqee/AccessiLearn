@@ -8,7 +8,7 @@ export const GradesViewer: React.FC = () => {
   const { speakText } = useAccessibility();
 
   const gradedItems = classroomGrades.filter((item) => typeof item.assigned_grade === 'number');
-  const submittedItems = classroomGrades.filter((item) => item.state === 'TURNED_IN' || item.state === 'RETURNED');
+  const doneItems = classroomGrades.filter((item) => item.state === 'TURNED_IN' || item.state === 'RETURNED');
   const outstandingCount = classroomGrades.filter((item) =>
     item.state === 'NEW' || item.state === 'CREATED' || item.state === 'RECLAIMED_BY_STUDENT'
   ).length;
@@ -49,7 +49,7 @@ export const GradesViewer: React.FC = () => {
           {classroomGrades.length > 0 && (
             <button
               type="button"
-              onClick={() => speakText(`Google Classroom: ${gradedItems.length} graded, ${submittedItems.length} submitted, ${outstandingCount} not submitted. Average of graded work: ${averagePercentage} percent.`)}
+              onClick={() => speakText(`Google Classroom: ${gradedItems.length} graded, ${doneItems.length} in Done, ${outstandingCount} not submitted. Average of graded work: ${averagePercentage} percent.`)}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-200"
               aria-label="Read Classroom grades summary aloud"
             >
@@ -85,9 +85,9 @@ export const GradesViewer: React.FC = () => {
           </div>
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500">Turned in</p>
+          <p className="text-xs font-semibold text-slate-500">Done in Classroom</p>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900">{submittedItems.length}</span>
+            <span className="text-3xl font-extrabold text-slate-900">{doneItems.length}</span>
             <span className="text-xs text-amber-700">{outstandingCount} not submitted</span>
           </div>
         </section>

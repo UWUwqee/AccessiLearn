@@ -34,6 +34,22 @@ async function proxyGoogleApi(url, token) {
   return payload;
 }
 
+async function proxyGoogleApiList(url, token, resourceName) {
+  const items = [];
+  let pageToken;
+
+  do {
+    const pageUrl = new URL(url);
+    if (pageToken) pageUrl.searchParams.set('pageToken', pageToken);
+
+    const payload = await proxyGoogleApi(pageUrl.toString(), token);
+    if (Array.isArray(payload[resourceName])) items.push(...payload[resourceName]);
+    pageToken = payload.nextPageToken;
+  } while (pageToken);
+
+  return items;
+}
+
 app.use(
   cors({
     origin: true,
@@ -60,64 +76,85 @@ app.post('/api/google/classroom', async (req, res) => {
   }
 
   try {
-    const coursePayload = await proxyGoogleApi('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&pageSize=10', token);
-    const courses = Array.isArray(coursePayload.courses) ? coursePayload.courses : [];
-    const tasks = [];
-    const grades = [];
-    let gradeError = null;
+    const courses = await proxyGoogleApiList(
+      'https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&courseStates=ARCHIVED&pageSize=100',
+      token,
+      'courses'
+    );
+    const courseWorkItems = [];
 
-    for (const course of courses.slice(0, 3)) {
-      const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=5`;
-      const courseworkPayload = await proxyGoogleApi(courseworkUrl, token);
-      const works = Array.isArray(courseworkPayload.courseWork) ? courseworkPayload.courseWork : [];
+    for (const course of courses) {
+      const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=100`;
+      const works = await proxyGoogleApiList(courseworkUrl, token, 'courseWork');
+      for (const work of works) courseWorkItems.push({ course, work });
+    }
 
-      for (const work of works) {
-        const dueDate = work.dueDate || null;
-        let dueDateText = 'No due date';
-        const submissionUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/${work.id}/studentSubmissions?userId=me&pageSize=1`;
-        let submission = null;
+    const tasks = courseWorkItems.map(({ course, work }) => {
+      const dueDate = work.dueDate || null;
+      let dueDateText = 'No due date';
 
-        if (!gradeError) {
-          try {
-            const submissionPayload = await proxyGoogleApi(submissionUrl, token);
-            submission = submissionPayload.studentSubmissions?.[0] || null;
-          } catch (error) {
-            if (error.status !== 403) throw error;
-            gradeError = 'Google Classroom denied access to your submission status or grades. Sign out, sign back in, and grant the requested student-submissions permission.';
-          }
-        }
-
-        if (dueDate && dueDate.year && dueDate.month && dueDate.day) {
-          dueDateText = new Date(dueDate.year, dueDate.month - 1, dueDate.day).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          });
-        }
-
-        tasks.push({
-          id: `${course.id}-${work.id}`,
-          title: work.title || 'Untitled activity',
-          module: course.name || 'Google Classroom',
-          instructions: work.description || 'No description provided for this activity yet.',
-          due_date: dueDateText,
-          points: work.maxPoints ?? 100,
-          accessible_formats: ['Readable text', 'Speech-friendly format', 'Accessible submission'],
-          alternateLink: work.alternateLink || null,
-        });
-
-        grades.push({
-          id: `${course.id}-${work.id}`,
-          course: course.name || 'Google Classroom',
-          title: work.title || 'Untitled activity',
-          due_date: dueDateText,
-          max_points: typeof work.maxPoints === 'number' ? work.maxPoints : null,
-          state: submission?.state || (gradeError ? 'UNAVAILABLE' : 'NEW'),
-          assigned_grade: typeof submission?.assignedGrade === 'number' ? submission.assignedGrade : undefined,
-          alternateLink: work.alternateLink || null,
+      if (dueDate && dueDate.year && dueDate.month && dueDate.day) {
+        dueDateText = new Date(dueDate.year, dueDate.month - 1, dueDate.day).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
         });
       }
+
+      return {
+        id: `${course.id}-${work.id}`,
+        title: work.title || 'Untitled activity',
+        module: course.name || 'Google Classroom',
+        instructions: work.description || 'No description provided for this activity yet.',
+        due_date: dueDateText,
+        points: work.maxPoints ?? 100,
+        accessible_formats: ['Readable text', 'Speech-friendly format', 'Accessible submission'],
+        alternateLink: work.alternateLink || null,
+      };
+    });
+    const tasksById = new Map(tasks.map((task) => [task.id, task]));
+
+    const submissionByWorkId = new Map();
+    let gradeError = null;
+
+    for (let start = 0; start < courseWorkItems.length && !gradeError; start += 8) {
+      const batch = courseWorkItems.slice(start, start + 8);
+      const batchResults = await Promise.all(batch.map(async ({ course, work }) => {
+        const submissionUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/${work.id}/studentSubmissions?userId=me&pageSize=1`;
+        try {
+          const submissionPayload = await proxyGoogleApi(submissionUrl, token);
+          return { key: `${course.id}-${work.id}`, submission: submissionPayload.studentSubmissions?.[0] || null };
+        } catch (error) {
+          if (error.status === 403) return { key: `${course.id}-${work.id}`, permissionDenied: true };
+          throw error;
+        }
+      }));
+
+      for (const result of batchResults) {
+        if (result.permissionDenied) {
+          gradeError = 'Google Classroom denied access to your submission status or grades. Sign out, sign back in, and grant the requested student-submissions permission.';
+          break;
+        }
+        submissionByWorkId.set(result.key, result.submission);
+      }
     }
+
+    const grades = courseWorkItems.map(({ course, work }) => {
+      const key = `${course.id}-${work.id}`;
+      const submission = submissionByWorkId.get(key);
+      const task = tasksById.get(key);
+
+      return {
+        id: key,
+        course: course.name || 'Google Classroom',
+        title: work.title || 'Untitled activity',
+        due_date: task?.due_date || 'No due date',
+        max_points: typeof work.maxPoints === 'number' ? work.maxPoints : null,
+        state: submission?.state || (gradeError ? 'UNAVAILABLE' : 'NEW'),
+        assigned_grade: typeof submission?.assignedGrade === 'number' ? submission.assignedGrade : undefined,
+        alternateLink: work.alternateLink || null,
+      };
+    });
 
     return res.json({ tasks, grades, gradeError });
   } catch (error) {
