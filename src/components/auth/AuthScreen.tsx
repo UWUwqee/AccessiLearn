@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, AlertCircle, CheckCircle2, ShieldCheck, Sparkles, BookOpenText, Accessibility } from 'lucide-react';
+import { GraduationCap, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const AuthScreen: React.FC = () => {
@@ -19,12 +19,6 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
-  const keyBenefits = [
-    'School or personal Google sign-in',
-    'Google Classroom activity tracking',
-    'Accessibility-first support tools',
-  ];
-
   return (
     <div className="auth-shell min-h-screen text-white relative overflow-hidden">
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -34,11 +28,6 @@ export const AuthScreen: React.FC = () => {
       <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-4 py-10 lg:px-8">
         <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="animate-fade-up space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Inclusive learning platform
-            </div>
-
             <div className="space-y-5">
               <h1 className="max-w-xl text-4xl font-black tracking-tight text-white md:text-6xl">
                 AccessiLearn
@@ -59,29 +48,6 @@ export const AuthScreen: React.FC = () => {
               ))}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="soft-hover glass-card rounded-2xl p-4">
-                <div className="mb-2 flex items-center gap-2 text-indigo-300">
-                  <BookOpenText className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em]">Courses</span>
-                </div>
-                <p className="text-2xl font-black text-white">12+</p>
-              </div>
-              <div className="soft-hover glass-card rounded-2xl p-4">
-                <div className="mb-2 flex items-center gap-2 text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em]">Sync</span>
-                </div>
-                <p className="text-2xl font-black text-white">Live</p>
-              </div>
-              <div className="soft-hover glass-card rounded-2xl p-4">
-                <div className="mb-2 flex items-center gap-2 text-amber-300">
-                  <Accessibility className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em]">Support</span>
-                </div>
-                <p className="text-2xl font-black text-white">24/7</p>
-              </div>
-            </div>
           </div>
 
           <div className="auth-panel animate-fade-up rounded-[28px] p-6 shadow-2xl shadow-indigo-950/40">
@@ -94,9 +60,6 @@ export const AuthScreen: React.FC = () => {
                   <p className="text-lg font-bold text-white">AccessiLearn</p>
                   <p className="text-xs text-slate-400">Student access portal</p>
                 </div>
-              </div>
-              <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
-                Secure
               </div>
             </div>
 
@@ -131,14 +94,6 @@ export const AuthScreen: React.FC = () => {
                 </div>
               )}
 
-              <div className="space-y-2 pt-2">
-                {keyBenefits.map((benefit) => (
-                  <div key={benefit} className="flex items-start gap-2 text-sm text-slate-300">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-                    <span>{benefit}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
