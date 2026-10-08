@@ -21,7 +21,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+const buildApiUrl = (path: string) => {
+  const configuredBase = import.meta.env.VITE_API_BASE;
+
+  if (configuredBase) {
+    return `${configuredBase.replace(/\/$/, '')}${path}`;
+  }
+
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return path;
+  }
+
+  return `http://localhost:3001${path}`;
+};
 
 const formatClassroomDate = (value?: { year?: number; month?: number; day?: number } | null): string => {
   if (!value) return 'No due date';
@@ -113,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsClassroomSyncing(true);
       setAuthError(null);
 
-      const authUrlResponse = await fetch(`${API_BASE}/api/google/auth-url`);
+      const authUrlResponse = await fetch(buildApiUrl('/api/google/auth-url'));
       const authUrlData = await authUrlResponse.json();
 
       if (!authUrlResponse.ok || !authUrlData.url) {
@@ -154,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('No Google account email was returned from Classroom authorization.');
       }
 
-      const classroomResponse = await fetch(`${API_BASE}/api/google/classroom?email=${encodeURIComponent(result.email)}`);
+      const classroomResponse = await fetch(buildApiUrl(`/api/google/classroom?email=${encodeURIComponent(result.email)}`));
       const classroomData = await classroomResponse.json();
 
       if (!classroomResponse.ok) {

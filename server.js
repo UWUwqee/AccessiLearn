@@ -1,29 +1,38 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { google } from 'googleapis';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+const frontendUrl = process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
+const distPath = path.resolve(__dirname, 'dist');
 
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
   console.warn('Google OAuth environment variables are not configured. Classroom sync will not work until they are set.');
 }
 
+const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
+  (process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL}/api/google/callback` : `http://localhost:${port}/api/google/callback`);
+
 const oauthClient = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/api/google/callback`
+  redirectUri
 );
 
 const tokenStore = new Map();
 
 app.use(
   cors({
-    origin: frontendUrl,
+    origin: true,
     credentials: true,
   })
 );
@@ -163,6 +172,17 @@ app.get('/api/google/classroom', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`AccessiLearn API running on http://localhost:${port}`);
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+
+  app.get(/^(?!\/api\/).*$/, (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`AccessiLearn running on http://0.0.0.0:${port}`);
+  if (frontendUrl !== 'http://localhost:3000') {
+    console.log(`Frontend origin: ${frontendUrl}`);
+  }
 });
