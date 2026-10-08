@@ -1,0 +1,181 @@
+{
+  "entities": {
+    "Learner": {
+      "title": "Learner",
+      "description": "Profile of a student with special educational needs participating in LMS accessibility evaluation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique learner ID or auth UID" },
+        "learner_name": { "type": "string", "description": "Full name of the learner", "maxLength": 100 },
+        "email": { "type": "string", "description": "Email address of the learner", "maxLength": 100 },
+        "educational_need": { "type": "string", "description": "Primary special educational need category", "enum": ["Visual Impairment", "Hearing Impairment", "Motor Impairment", "Cognitive / Dyslexia", "Low Vision / Color Blindness", "Multiple Needs", "General / Control"] },
+        "assistive_tech": { "type": "array", "description": "List of assistive technologies used" },
+        "grade_level": { "type": "string", "description": "Academic level or year", "maxLength": 50 },
+        "experience_level": { "type": "string", "description": "Prior digital experience level", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["learner_name", "educational_need", "email"]
+    },
+    "LmsFeature": {
+      "title": "LmsFeature",
+      "description": "LMS accessibility or functional feature under evaluation (A1 to A7 and functional modules)",
+      "type": "object",
+      "properties": {
+        "feature_id": { "type": "string", "description": "Identifier like A1, A2, etc.", "maxLength": 20 },
+        "feature_name": { "type": "string", "description": "Name of the feature", "maxLength": 100 },
+        "feature_description": { "type": "string", "description": "Detailed description of how feature appears in prototype", "maxLength": 300 },
+        "category": { "type": "string", "description": "Accessibility criteria or Functional module", "maxLength": 50 },
+        "status": { "type": "string", "description": "Current status", "enum": ["Active", "Tested", "Needs Improvement"] }
+      },
+      "required": ["feature_id", "feature_name", "feature_description"]
+    },
+    "AccessibilityAssessment": {
+      "title": "AccessibilityAssessment",
+      "description": "Learner assessment record for individual accessibility features A1-A7",
+      "type": "object",
+      "properties": {
+        "learner_id": { "type": "string", "description": "Learner UID who evaluated", "maxLength": 128 },
+        "feature_id": { "type": "string", "description": "Feature ID (A1-A7)", "maxLength": 20 },
+        "feature_name": { "type": "string", "description": "Feature display name", "maxLength": 100 },
+        "accessibility_rating": { "type": "number", "description": "Rating from 1 to 5" },
+        "helpful": { "type": "boolean", "description": "Whether feature was helpful" },
+        "difficult": { "type": "boolean", "description": "Whether feature caused difficulty" },
+        "accessibility_issue": { "type": "string", "description": "Specific issue encountered", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["learner_id", "feature_id", "accessibility_rating"]
+    },
+    "UserExperienceEvaluation": {
+      "title": "UserExperienceEvaluation",
+      "description": "Post-experience 5-dimension UX evaluation (Ease of use, Clarity, Navigation, Convenience, Satisfaction)",
+      "type": "object",
+      "properties": {
+        "learner_id": { "type": "string", "description": "Learner UID", "maxLength": 128 },
+        "learner_name": { "type": "string", "description": "Learner name", "maxLength": 100 },
+        "educational_need": { "type": "string", "description": "Educational need category", "maxLength": 100 },
+        "ease_of_use": { "type": "number", "description": "Ease of Use rating 1-5" },
+        "clarity_understanding": { "type": "number", "description": "Clarity & Understanding rating 1-5" },
+        "navigation": { "type": "number", "description": "Navigation rating 1-5" },
+        "convenience": { "type": "number", "description": "Convenience rating 1-5" },
+        "satisfaction": { "type": "number", "description": "Satisfaction rating 1-5" },
+        "overall_average": { "type": "number", "description": "Average Likert score" },
+        "problems_encountered": { "type": "string", "description": "Problems encountered during learning activities", "maxLength": 1000 },
+        "suggestions": { "type": "string", "description": "Recommendations or suggestions from learner", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["learner_id", "ease_of_use", "clarity_understanding", "navigation", "convenience", "satisfaction"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Open-ended qualitative feedback and suggestions from learners or researchers",
+      "type": "object",
+      "properties": {
+        "learner_id": { "type": "string", "description": "Learner UID", "maxLength": 128 },
+        "learner_name": { "type": "string", "description": "Learner name", "maxLength": 100 },
+        "feedback_text": { "type": "string", "description": "Detailed feedback text", "maxLength": 1000 },
+        "suggestion": { "type": "string", "description": "Constructive improvement suggestion", "maxLength": 1000 },
+        "category": { "type": "string", "description": "Category: visual, auditory, cognitive, navigation, general", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["learner_id", "feedback_text"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "LMS learning activity / task assignment for learners",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Activity Title", "maxLength": 150 },
+        "module": { "type": "string", "description": "Course Module Name", "maxLength": 100 },
+        "instructions": { "type": "string", "description": "Step by step instructions with clear headings", "maxLength": 2000 },
+        "due_date": { "type": "string", "description": "Due date formatted string", "maxLength": 50 },
+        "points": { "type": "number", "description": "Max points" },
+        "accessible_formats": { "type": "array", "description": "List of available accessible formats" }
+      },
+      "required": ["title", "instructions", "due_date"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Learner submitted activity response and teacher evaluation score",
+      "type": "object",
+      "properties": {
+        "activity_id": { "type": "string", "description": "Activity ID", "maxLength": 64 },
+        "activity_title": { "type": "string", "description": "Activity title", "maxLength": 150 },
+        "learner_id": { "type": "string", "description": "Learner UID", "maxLength": 128 },
+        "learner_name": { "type": "string", "description": "Learner Name", "maxLength": 100 },
+        "response_text": { "type": "string", "description": "Learner text response", "maxLength": 3000 },
+        "attachment_name": { "type": "string", "description": "Attached file name", "maxLength": 100 },
+        "status": { "type": "string", "description": "Submission status", "enum": ["submitted", "graded"] },
+        "score": { "type": "number", "description": "Score awarded" },
+        "feedback": { "type": "string", "description": "Teacher feedback comments", "maxLength": 1000 },
+        "submitted_at": { "type": "string", "format": "date-time", "description": "Submission time" }
+      },
+      "required": ["activity_id", "learner_id", "response_text"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Direct communication between learner and teacher or researcher",
+      "type": "object",
+      "properties": {
+        "sender_id": { "type": "string", "description": "Sender UID", "maxLength": 128 },
+        "sender_name": { "type": "string", "description": "Sender display name", "maxLength": 100 },
+        "sender_role": { "type": "string", "description": "Sender role: learner or teacher", "maxLength": 50 },
+        "recipient_id": { "type": "string", "description": "Recipient UID or general channel", "maxLength": 128 },
+        "content": { "type": "string", "description": "Message content", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["sender_id", "sender_name", "content"]
+    },
+    "EvaluationResult": {
+      "title": "EvaluationResult",
+      "description": "Aggregated research analysis results, identified issues, and improvement recommendations",
+      "type": "object",
+      "properties": {
+        "total_evaluations": { "type": "number", "description": "Count of evaluated learners" },
+        "average_ux_scores": { "type": "object", "description": "Average scores for the 5 UX dimensions" },
+        "identified_issues": { "type": "array", "description": "Synthesized accessibility and UX issues" },
+        "recommendations": { "type": "array", "description": "Agile improvement recommendations for LMS developers" },
+        "agile_sprint": { "type": "number", "description": "Agile iteration cycle index" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last synthesized timestamp" }
+      },
+      "required": ["total_evaluations", "agile_sprint"]
+    }
+  },
+  "firestore": {
+    "/learners/{learnerId}": {
+      "schema": "Learner",
+      "description": "Learner registration and special educational needs profile"
+    },
+    "/lms_features/{featureId}": {
+      "schema": "LmsFeature",
+      "description": "Core accessibility features A1-A7 evaluated in study"
+    },
+    "/accessibility_assessments/{assessmentId}": {
+      "schema": "AccessibilityAssessment",
+      "description": "Feature-by-feature accessibility ratings and difficulty flags"
+    },
+    "/user_experience_evaluations/{evalId}": {
+      "schema": "UserExperienceEvaluation",
+      "description": "5-dimensional UX survey responses from participants"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Learner open comments, difficulties, and suggestions"
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Accessible course activities and assignments"
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Learner assignment submissions and teacher feedback"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Communication interface messages between learner and teacher"
+    },
+    "/evaluation_results/{resultId}": {
+      "schema": "EvaluationResult",
+      "description": "Aggregated research findings and Agile recommendations"
+    }
+  }
+}

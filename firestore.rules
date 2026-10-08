@@ -1,0 +1,168 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "kyledesillarico@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation for Learner Profile
+    function isValidLearner(data) {
+      return data.keys().hasAll(['learner_name', 'educational_need', 'email']) &&
+             data.learner_name is string && data.learner_name.size() > 0 && data.learner_name.size() <= 100 &&
+             data.educational_need is string && data.educational_need.size() <= 100 &&
+             data.email is string && data.email.size() <= 100;
+    }
+
+    // Validation for LMS Features
+    function isValidFeature(data) {
+      return data.keys().hasAll(['feature_id', 'feature_name', 'feature_description']) &&
+             data.feature_id is string && data.feature_id.size() <= 20 &&
+             data.feature_name is string && data.feature_name.size() <= 100 &&
+             data.feature_description is string && data.feature_description.size() <= 300;
+    }
+
+    // Validation for Accessibility Assessment
+    function isValidAssessment(data) {
+      return data.keys().hasAll(['learner_id', 'feature_id', 'accessibility_rating']) &&
+             data.learner_id == request.auth.uid &&
+             data.feature_id is string && data.feature_id.size() <= 20 &&
+             data.accessibility_rating is number && data.accessibility_rating >= 1 && data.accessibility_rating <= 5;
+    }
+
+    // Validation for UX Evaluation (5 dimensions)
+    function isValidUXEval(data) {
+      return data.keys().hasAll(['learner_id', 'ease_of_use', 'clarity_understanding', 'navigation', 'convenience', 'satisfaction']) &&
+             data.learner_id == request.auth.uid &&
+             data.ease_of_use is number && data.ease_of_use >= 1 && data.ease_of_use <= 5 &&
+             data.clarity_understanding is number && data.clarity_understanding >= 1 && data.clarity_understanding <= 5 &&
+             data.navigation is number && data.navigation >= 1 && data.navigation <= 5 &&
+             data.convenience is number && data.convenience >= 1 && data.convenience <= 5 &&
+             data.satisfaction is number && data.satisfaction >= 1 && data.satisfaction <= 5;
+    }
+
+    // Validation for Feedback
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['learner_id', 'feedback_text']) &&
+             data.learner_id == request.auth.uid &&
+             data.feedback_text is string && data.feedback_text.size() > 0 && data.feedback_text.size() <= 1000;
+    }
+
+    // Validation for Submissions
+    function isValidSubmission(data) {
+      return data.keys().hasAll(['activity_id', 'learner_id', 'response_text']) &&
+             data.learner_id == request.auth.uid &&
+             data.activity_id is string && data.activity_id.size() <= 64 &&
+             data.response_text is string && data.response_text.size() <= 3000;
+    }
+
+    // Validation for Messages
+    function isValidMessage(data) {
+      return data.keys().hasAll(['sender_id', 'sender_name', 'content']) &&
+             data.sender_id == request.auth.uid &&
+             data.sender_name is string && data.sender_name.size() <= 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 1000;
+    }
+
+    // 1. Learners Collection
+    match /learners/{learnerId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
+      allow update: if isSignedIn() && (
+        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'assistive_tech', 'experience_level'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 2. LMS Features
+    match /lms_features/{featureId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidFeature(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 3. Accessibility Assessments
+    match /accessibility_assessments/{assessmentId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidAssessment(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // 4. UX Evaluations
+    match /user_experience_evaluations/{evalId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidUXEval(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. Feedbacks
+    match /feedbacks/{feedbackId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidFeedback(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // 6. Activities
+    match /activities/{activityId} {
+      allow get, list: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // 7. Announcements
+    match /announcements/{announcementId} {
+      allow get, list: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // 8. Submissions
+    match /submissions/{submissionId} {
+      allow get: if isSignedIn() && (resource.data.learner_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
+      allow create: if isSignedIn() && isValidSubmission(incoming());
+      allow update: if isSignedIn() && (
+        (resource.data.learner_id == request.auth.uid && resource.data.status != 'graded' && incoming().diff(existing()).affectedKeys().hasOnly(['response_text', 'attachment_name', 'submitted_at'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 9. Messages
+    match /messages/{messageId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidMessage(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // 10. Evaluation Results
+    match /evaluation_results/{resultId} {
+      allow get, list: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}

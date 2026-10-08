@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+/* High Contrast and Accessibility Modes */
+:root {
+  --focus-ring-color: #2563eb;
+}
+
+/* High Visibility Focus Indicators (WCAG 2.2 Criterion 2.4.7 Focus Visible & 2.4.11 Focus Appearance) */
+:focus-visible {
+  outline: 3px solid var(--focus-ring-color) !important;
+  outline-offset: 3px !important;
+}
+
+/* Theme: High Contrast Dark */
+.theme-high-contrast-dark {
+  --focus-ring-color: #38bdf8;
+  background-color: #050505 !important;
+  color: #ffffff !important;
+}
+.theme-high-contrast-dark body {
+  background-color: #050505 !important;
+  color: #ffffff !important;
+}
+.theme-high-contrast-dark .bg-white,
+.theme-high-contrast-dark .bg-slate-50,
+.theme-high-contrast-dark .bg-gray-50,
+.theme-high-contrast-dark .bg-slate-100 {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+  border-color: #404040 !important;
+}
+.theme-high-contrast-dark .text-slate-900,
+.theme-high-contrast-dark .text-slate-800,
+.theme-high-contrast-dark .text-slate-700,
+.theme-high-contrast-dark .text-slate-600 {
+  color: #f1f5f9 !important;
+}
+.theme-high-contrast-dark .text-slate-500,
+.theme-high-contrast-dark .text-gray-500 {
+  color: #cbd5e1 !important;
+}
+.theme-high-contrast-dark .border-slate-200,
+.theme-high-contrast-dark .border-gray-200,
+.theme-high-contrast-dark .border-slate-100 {
+  border-color: #525252 !important;
+}
+
+/* Theme: High Contrast Light */
+.theme-high-contrast-light {
+  --focus-ring-color: #000000;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+.theme-high-contrast-light body {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+.theme-high-contrast-light .text-slate-500,
+.theme-high-contrast-light .text-slate-600,
+.theme-high-contrast-light .text-slate-700 {
+  color: #000000 !important;
+  font-weight: 500;
+}
+.theme-high-contrast-light .border-slate-200,
+.theme-high-contrast-light .border-gray-200 {
+  border-color: #000000 !important;
+}
+
+/* Theme: Yellow on Black (Low Vision / Photophobia Friendly) */
+.theme-yellow-on-black {
+  --focus-ring-color: #00ffff;
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+.theme-yellow-on-black body {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+.theme-yellow-on-black .bg-white,
+.theme-yellow-on-black .bg-slate-50,
+.theme-yellow-on-black .bg-gray-50,
+.theme-yellow-on-black .bg-slate-100,
+.theme-yellow-on-black .bg-blue-50 {
+  background-color: #0c0c0c !important;
+  color: #ffff00 !important;
+  border-color: #ffff00 !important;
+}
+.theme-yellow-on-black p,
+.theme-yellow-on-black span,
+.theme-yellow-on-black h1,
+.theme-yellow-on-black h2,
+.theme-yellow-on-black h3,
+.theme-yellow-on-black h4,
+.theme-yellow-on-black div,
+.theme-yellow-on-black label,
+.theme-yellow-on-black input,
+.theme-yellow-on-black textarea,
+.theme-yellow-on-black button {
+  color: #ffff00 !important;
+}
+.theme-yellow-on-black .border-slate-200,
+.theme-yellow-on-black .border-gray-200,
+.theme-yellow-on-black .border-slate-300 {
+  border-color: #ffff00 !important;
+}
+
+/* Text Size Scalers (A1) */
+.text-size-large {
+  font-size: 115% !important;
+}
+.text-size-xlarge {
+  font-size: 130% !important;
+}
+
+/* Dyslexia / Cognitive Friendly Typography (A1, A6) */
+.font-dyslexic {
+  letter-spacing: 0.08em !important;
+  word-spacing: 0.16em !important;
+  line-height: 1.85 !important;
+  font-family: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 10px;
+  background: #1e293b;
+  color: #ffffff;
+  padding: 8px 16px;
+  z-index: 100;
+  transition: top 0.2s ease;
+  font-weight: 600;
+  border-radius: 4px;
+}
+.skip-link:focus {
+  top: 10px;
+}

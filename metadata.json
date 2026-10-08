@@ -1,0 +1,8 @@
+{
+  "name": "AccessiLearn - Accessible LMS for SEN Learners",
+  "description": "Accessible Learning Management System and evaluation research tool for learners with Special Educational Needs, featuring WCAG 2.2 accessibility controls, functional learner modules, and automated researcher feedback analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
