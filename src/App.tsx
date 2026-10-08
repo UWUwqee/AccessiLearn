@@ -154,27 +154,29 @@ const AppContent: React.FC = () => {
 
       {/* Main Content Area */}
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 outline-none">
-        {currentTab === 'dashboard' && (
-          <DashboardView
-            onNavigate={(tab) => setCurrentTab(tab)}
-            onOpenSurvey={() => setSurveyModalOpen(true)}
-            onOpenAccessibility={() => setAccessibilityModalOpen(true)}
-          />
-        )}
+        <div key={currentTab} className="page-enter">
+          {currentTab === 'dashboard' && (
+            <DashboardView
+              onNavigate={(tab) => setCurrentTab(tab)}
+              onOpenSurvey={() => setSurveyModalOpen(true)}
+              onOpenAccessibility={() => setAccessibilityModalOpen(true)}
+            />
+          )}
 
-        {currentTab === 'materials' && <ClassroomMaterialsViewer />}
+          {currentTab === 'materials' && <ClassroomMaterialsViewer />}
 
-        {currentTab === 'activities' && <ActivitySubmissionModule />}
+          {currentTab === 'activities' && <ActivitySubmissionModule />}
 
-        {currentTab === 'communication' && <CommunicationInterface />}
+          {currentTab === 'communication' && <CommunicationInterface />}
 
-        {currentTab === 'grades' && <GradesViewer />}
+          {currentTab === 'grades' && <GradesViewer />}
 
-        {currentTab === 'instructor' && role === 'instructor' && <InstructorWorkspace />}
+          {currentTab === 'instructor' && role === 'instructor' && <InstructorWorkspace />}
 
-        {currentTab === 'researcher' && role === 'researcher' && <ResearcherDashboard />}
+          {currentTab === 'researcher' && role === 'researcher' && <ResearcherDashboard />}
 
-        {currentTab === 'admin' && isAdmin && <AdminDashboard />}
+          {currentTab === 'admin' && isAdmin && <AdminDashboard />}
+        </div>
       </main>
 
       {/* Dedicated Accessibility Features Section Modal */}

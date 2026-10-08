@@ -80,7 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-6 dashboard-enter">
       <div className="dashboard-hero rounded-[28px] border border-slate-200 p-6 text-white shadow-2xl shadow-slate-900/20 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">

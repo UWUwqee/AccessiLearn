@@ -65,6 +65,54 @@ body {
   animation: fade-up 0.7s ease-out both;
 }
 
+.page-enter {
+  animation: fade-up 0.28s ease-out both;
+}
+
+.dashboard-enter > * {
+  animation: fade-up 0.48s ease-out both;
+}
+
+.dashboard-enter > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.dashboard-enter > *:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.dashboard-enter > *:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.dashboard-enter > *:nth-child(4) {
+  animation-delay: 210ms;
+}
+
+.dashboard-enter > *:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.auth-card {
+  animation-delay: 140ms;
+}
+
+.auth-feature-pill {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.auth-feature-pill:nth-child(1) {
+  animation-delay: 180ms;
+}
+
+.auth-feature-pill:nth-child(2) {
+  animation-delay: 260ms;
+}
+
+.auth-feature-pill:nth-child(3) {
+  animation-delay: 340ms;
+}
+
 .animate-float {
   animation: float 7s ease-in-out infinite;
 }
@@ -101,6 +149,19 @@ body {
 .soft-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
+}
+
+.shimmer-button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.shimmer-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.22);
+}
+
+.shimmer-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
 }
 
 .shimmer-button {
@@ -154,6 +215,11 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .dashboard-enter > *,
+  .auth-feature-pill {
+    animation-delay: 0ms !important;
   }
 }
 

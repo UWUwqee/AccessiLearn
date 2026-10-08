@@ -27,13 +27,13 @@ export const AuthScreen: React.FC = () => {
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-4 py-10 lg:px-8">
         <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="animate-fade-up space-y-8">
+          <div className="auth-intro animate-fade-up space-y-8">
             <div className="space-y-5">
               <h1 className="max-w-xl text-4xl font-black tracking-tight text-white md:text-6xl">
                 AccessiLearn
               </h1>
               <p className="max-w-xl text-base text-slate-300 md:text-lg">
-                A support platform for learners with disabilities.
+                A support platform for learners.
               </p>
             </div>
 
@@ -41,7 +41,7 @@ export const AuthScreen: React.FC = () => {
               {['WCAG-informed design', 'Google Classroom sync', 'Personalized accommodations'].map((item) => (
                 <span
                   key={item}
-                  className="rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-200"
+                  className="auth-feature-pill rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-indigo-400/70 hover:bg-indigo-500/10"
                 >
                   {item}
                 </span>
@@ -50,7 +50,7 @@ export const AuthScreen: React.FC = () => {
 
           </div>
 
-          <div className="auth-panel animate-fade-up rounded-[28px] p-6 shadow-2xl shadow-indigo-950/40">
+          <div className="auth-panel auth-card animate-fade-up rounded-[28px] p-6 shadow-2xl shadow-indigo-950/40">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="animate-pulse-glow flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg shadow-indigo-500/30">
