@@ -178,6 +178,10 @@ if (fs.existsSync(distPath)) {
   app.get(/^(?!\/api\/).*$/, (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
+} else {
+  app.get(/^(?!\/api\/).*$/, (_req, res) => {
+    res.type('html').send(`<!doctype html><html><body><h1>AccessiLearn is starting up.</h1><p>The frontend build is still being generated.</p></body></html>`);
+  });
 }
 
 app.listen(port, '0.0.0.0', () => {
