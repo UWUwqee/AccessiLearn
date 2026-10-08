@@ -40,7 +40,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenSurvey,
   onOpenAccessibility,
 }) => {
-  const { learnerProfile, updateLearnerProfile, user, classroomActivities, isClassroomSyncing, classroomLastSync, syncGoogleClassroom, authError } = useAuth();
+  const { learnerProfile, updateLearnerProfile, user, classroomCourses, classroomActivities, isClassroomSyncing, classroomLastSync, syncGoogleClassroom, authError } = useAuth();
   const { speakText } = useAccessibility();
 
   const [announcements, setAnnouncements] = useState<AnnouncementDoc[]>([]);
@@ -162,9 +162,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="mt-3 flex items-center justify-between border-t border-slate-700 pt-3 text-[11px] text-slate-300">
-              <span>Last sync</span>
+              <span>{classroomCourses.length} enrolled {classroomCourses.length === 1 ? 'subject' : 'subjects'}</span>
               <span className="font-semibold text-indigo-200">{classroomLastSync || (classroomActivities.length ? 'Just now' : 'Not connected')}</span>
             </div>
+            {classroomCourses.length > 0 && (
+              <p className="mt-2 text-xs text-slate-400">
+                {classroomCourses.map((course) => course.name).join(' · ')}
+              </p>
+            )}
           </div>
 
           <div className="dashboard-inset rounded-2xl border border-slate-700 p-4 sm:p-5">

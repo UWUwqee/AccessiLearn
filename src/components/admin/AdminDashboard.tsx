@@ -25,8 +25,6 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  updateDoc,
-  where,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -36,19 +34,19 @@ type AdminTab = 'overview' | 'users' | 'content' | 'classroom' | 'analytics' | '
 
 type UserFormState = { title: string; content: string };
 
-type RoleOption = { value: Role; label: string; description: string };
+type AssignableRole = Exclude<Role, 'admin'>;
+type RoleOption = { value: AssignableRole; label: string; description: string };
 
 const roleOptions: RoleOption[] = [
   { value: 'learner', label: 'Learner', description: 'Normal course participant' },
   { value: 'instructor', label: 'Instructor', description: 'Can manage classes and grades' },
   { value: 'researcher', label: 'Researcher', description: 'Can view analytics and evaluations' },
-  { value: 'admin', label: 'Administrator', description: 'Full system access' },
 ];
 
 const emptyForm = { title: '', content: '' };
 
 export const AdminDashboard: React.FC = () => {
-  const { learnerProfile, user, logout } = useAuth();
+  const { learnerProfile, user, logout, isAdmin, setAssignedRole } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementDoc[]>([]);
@@ -112,21 +110,13 @@ export const AdminDashboard: React.FC = () => {
     { label: 'Priority issues', value: totals.accessibilityIssues, caption: 'Accessibility risks', icon: XCircle },
   ];
 
-  const handleRoleChange = async (targetUser: UserAccount, nextRole: Role) => {
-    if (!targetUser.id || !user || !learnerProfile || learnerProfile.role !== 'admin') return;
-    if (targetUser.id === user.uid && nextRole !== 'admin') {
-      setError('Administrators cannot remove their own administrator role.');
-      return;
-    }
+  const handleRoleChange = async (targetUser: UserAccount, nextRole: AssignableRole) => {
+    if (!targetUser.id || !user || !isAdmin) return;
 
     setSaving(true);
     setError(null);
     try {
-      const userRef = doc(db, 'users', targetUser.id);
-      await updateDoc(userRef, { role: nextRole, updatedAt: new Date().toISOString() });
-      if (targetUser.id === user.uid) {
-        learnerProfile.role = nextRole;
-      }
+      await setAssignedRole(targetUser.id, nextRole);
     } catch (updateError) {
       console.error(updateError);
       setError('The role could not be changed.');
@@ -147,6 +137,7 @@ export const AdminDashboard: React.FC = () => {
       await addDoc(collection(db, 'announcements'), {
         title: form.title.trim(),
         author: learnerProfile?.learner_name || user?.displayName || 'Administrator',
+        authorId: user?.uid,
         date: new Date().toISOString(),
         content: form.content.trim(),
         createdAt: serverTimestamp(),
@@ -264,7 +255,10 @@ export const AdminDashboard: React.FC = () => {
           {activeTab === 'users' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><h2 className="text-sm font-black text-slate-900">User accounts and roles</h2><p className="text-xs text-slate-500">Only a signed-in administrator can change appointment permissions.</p></div>
+                <div>
+                  <h2 className="text-sm font-black text-slate-900">User accounts and roles</h2>
+                  <p className="text-xs text-slate-500">Role changes take effect immediately for signed-in users. Learners use course tools, instructors review and grade submissions and publish announcements, and researchers access evaluation analytics. Only the primary administrator manages roles.</p>
+                </div>
                 <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'all' | Role)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs"><option value="all">All roles</option>{roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select>
               </div>
               <div className="mt-5 overflow-x-auto">
@@ -274,7 +268,7 @@ export const AdminDashboard: React.FC = () => {
                     <tr key={account.id}>
                       <td className="py-3 pr-4"><p className="font-bold text-slate-900">{account.learner_name || account.email}</p><p className="text-[10px] text-slate-500">{account.email}</p></td>
                       <td className="py-3 pr-4"><span className={`inline-flex rounded-full px-2 py-1 font-bold ${account.isOnline ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{account.isOnline ? 'Online' : 'Offline'}</span></td>
-                      <td className="py-3 pr-4"><select disabled={saving || account.id === user?.uid} value={account.role || 'learner'} onChange={(event) => handleRoleChange(account, event.target.value as Role)} className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-bold text-slate-700"><option value="learner">Learner</option><option value="instructor">Instructor</option><option value="researcher">Researcher</option><option value="admin">Administrator</option></select></td>
+                      <td className="py-3 pr-4">{account.id === user?.uid ? <span className="rounded-lg bg-indigo-50 px-2 py-1.5 font-bold text-indigo-700">Primary administrator</span> : account.role === 'admin' ? <button disabled={saving} onClick={() => handleRoleChange(account, 'learner')} className="rounded-lg bg-amber-50 px-2 py-1.5 font-bold text-amber-800 disabled:opacity-60">Legacy admin · reset to learner</button> : <select disabled={saving} value={account.role || 'learner'} onChange={(event) => handleRoleChange(account, event.target.value as AssignableRole)} className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-bold text-slate-700"><option value="learner">Learner</option><option value="instructor">Instructor</option><option value="researcher">Researcher</option></select>}</td>
                       <td className="py-3 pr-4 text-slate-500">{account.lastSeenAt ? new Date(account.lastSeenAt).toLocaleString() : 'Never'}</td>
                     </tr>
                   ))}<tr>{filteredUsers.length === 0 && <td colSpan={4} className="py-8 text-center text-slate-500">No users match the selected role.</td>}</tr></tbody>

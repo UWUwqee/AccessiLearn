@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AccessibilityProvider } from './context/AccessibilityContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthScreen } from './components/auth/AuthScreen';
@@ -6,10 +6,11 @@ import { AccessibilitySection } from './components/layout/AccessibilitySection';
 import { Navbar } from './components/layout/Navbar';
 import { ReadingRuler } from './components/layout/ReadingRuler';
 import { DashboardView } from './components/lms/DashboardView';
-import { LearningMaterialsViewer } from './components/lms/LearningMaterialsViewer';
+import { ClassroomMaterialsViewer } from './components/lms/ClassroomMaterialsViewer';
 import { ActivitySubmissionModule } from './components/lms/ActivitySubmissionModule';
 import { CommunicationInterface } from './components/lms/CommunicationInterface';
 import { GradesViewer } from './components/lms/GradesViewer';
+import { InstructorWorkspace } from './components/lms/InstructorWorkspace';
 import { ResearcherDashboard } from './components/researcher/ResearcherDashboard';
 import { EvaluationModal } from './components/evaluation/EvaluationModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
@@ -22,6 +23,13 @@ const AppContent: React.FC = () => {
   const [accessibilityModalOpen, setAccessibilityModalOpen] = useState<boolean>(false);
   const [profileSetupSaving, setProfileSetupSaving] = useState(false);
   const [profileSetupError, setProfileSetupError] = useState<string | null>(null);
+  const role = learnerProfile?.role;
+
+  useEffect(() => {
+    if ((currentTab === 'instructor' && role !== 'instructor') || (currentTab === 'researcher' && role !== 'researcher')) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentTab, role]);
 
   if (isLoading) {
     return (
@@ -158,7 +166,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'materials' && <LearningMaterialsViewer />}
+        {currentTab === 'materials' && <ClassroomMaterialsViewer />}
 
         {currentTab === 'activities' && <ActivitySubmissionModule />}
 
@@ -166,7 +174,9 @@ const AppContent: React.FC = () => {
 
         {currentTab === 'grades' && <GradesViewer />}
 
-        {currentTab === 'researcher' && <ResearcherDashboard />}
+        {currentTab === 'instructor' && role === 'instructor' && <InstructorWorkspace />}
+
+        {currentTab === 'researcher' && role === 'researcher' && <ResearcherDashboard />}
       </main>
 
       {/* Dedicated Accessibility Features Section Modal */}

@@ -108,6 +108,7 @@ export interface FeedbackRecord {
 
 export interface CourseActivity {
   id: string;
+  courseId: string;
   title: string;
   module: string;
   instructions: string;
@@ -117,8 +118,28 @@ export interface CourseActivity {
   alternateLink?: string;
 }
 
+export interface ClassroomCourse {
+  id: string;
+  name: string;
+  section: string;
+  alternateLink?: string;
+}
+
+export interface ClassroomMaterial {
+  id: string;
+  courseId: string;
+  course: string;
+  courseworkTitle: string;
+  title: string;
+  type: string;
+  url: string;
+  thumbnailUrl?: string;
+  description?: string;
+}
+
 export interface ClassroomGrade {
   id: string;
+  courseId: string;
   course: string;
   title: string;
   due_date: string;

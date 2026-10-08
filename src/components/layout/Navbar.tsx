@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Award,
   BarChart3,
+  ClipboardList,
   LogOut,
   ChevronDown,
   User,
@@ -37,7 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'activities', label: 'Activities', icon: FileCheck2 },
     { id: 'communication', label: 'Messages', icon: MessageSquare },
     { id: 'grades', label: 'Grades', icon: Award },
-    { id: 'researcher', label: 'Analytics', icon: BarChart3 },
+    ...(learnerProfile?.role === 'instructor' ? [{ id: 'instructor', label: 'Instructor', icon: ClipboardList }] : []),
+    ...(learnerProfile?.role === 'researcher' ? [{ id: 'researcher', label: 'Analytics', icon: BarChart3 }] : []),
   ];
 
   const handleNavClick = (tabId: string, label: string) => {

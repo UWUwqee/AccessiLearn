@@ -77,19 +77,52 @@ app.post('/api/google/classroom', async (req, res) => {
 
   try {
     const courses = await proxyGoogleApiList(
-      'https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&courseStates=ARCHIVED&pageSize=100',
+      'https://classroom.googleapis.com/v1/courses?studentId=me&courseStates=ACTIVE&pageSize=100',
       token,
       'courses'
     );
+    const enrolledCourses = courses.filter((course) => course.courseState === 'ACTIVE');
     const courseWorkItems = [];
+    const classroomMaterials = [];
 
-    for (const course of courses) {
+    for (const course of enrolledCourses) {
       const courseworkUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=100`;
       const works = await proxyGoogleApiList(courseworkUrl, token, 'courseWork');
-      for (const work of works) courseWorkItems.push({ course, work });
+      for (const work of works) {
+        courseWorkItems.push({ course, work });
+
+        for (const [index, item] of (work.materials || []).entries()) {
+          const details = item.driveFile?.driveFile || item.youtubeVideo || item.link || item.form;
+          const url = details?.alternateLink || details?.url || details?.formUrl;
+          if (!url || !/^https?:\/\//i.test(url)) continue;
+
+          const materialType = item.driveFile
+            ? 'Google Drive'
+            : item.youtubeVideo
+              ? 'YouTube'
+              : item.form
+                ? 'Google Form'
+                : 'Link';
+          classroomMaterials.push({
+            id: `${course.id}-${work.id}-material-${index}`,
+            courseId: course.id,
+            course: course.name || 'Google Classroom',
+            courseworkTitle: work.title || 'Classroom post',
+            title: details.title || url,
+            type: materialType,
+            url,
+            thumbnailUrl: details.thumbnailUrl || null,
+            description: work.description || '',
+          });
+        }
+      }
     }
 
-    const tasks = courseWorkItems.map(({ course, work }) => {
+    const courseworkAssignments = courseWorkItems.filter(({ work }) =>
+      work.courseWorkType !== 'MATERIAL' && work.workType !== 'MATERIAL'
+    );
+
+    const tasks = courseworkAssignments.map(({ course, work }) => {
       const dueDate = work.dueDate || null;
       let dueDateText = 'No due date';
 
@@ -103,6 +136,7 @@ app.post('/api/google/classroom', async (req, res) => {
 
       return {
         id: `${course.id}-${work.id}`,
+        courseId: course.id,
         title: work.title || 'Untitled activity',
         module: course.name || 'Google Classroom',
         instructions: work.description || 'No description provided for this activity yet.',
@@ -117,8 +151,8 @@ app.post('/api/google/classroom', async (req, res) => {
     const submissionByWorkId = new Map();
     let gradeError = null;
 
-    for (let start = 0; start < courseWorkItems.length && !gradeError; start += 8) {
-      const batch = courseWorkItems.slice(start, start + 8);
+    for (let start = 0; start < courseworkAssignments.length && !gradeError; start += 8) {
+      const batch = courseworkAssignments.slice(start, start + 8);
       const batchResults = await Promise.all(batch.map(async ({ course, work }) => {
         const submissionUrl = `https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/${work.id}/studentSubmissions?userId=me&pageSize=1`;
         try {
@@ -139,13 +173,14 @@ app.post('/api/google/classroom', async (req, res) => {
       }
     }
 
-    const grades = courseWorkItems.map(({ course, work }) => {
+    const grades = courseworkAssignments.map(({ course, work }) => {
       const key = `${course.id}-${work.id}`;
       const submission = submissionByWorkId.get(key);
       const task = tasksById.get(key);
 
       return {
         id: key,
+        courseId: course.id,
         course: course.name || 'Google Classroom',
         title: work.title || 'Untitled activity',
         due_date: task?.due_date || 'No due date',
@@ -156,7 +191,18 @@ app.post('/api/google/classroom', async (req, res) => {
       };
     });
 
-    return res.json({ tasks, grades, gradeError });
+    return res.json({
+      courses: enrolledCourses.map((course) => ({
+        id: course.id,
+        name: course.name || 'Google Classroom course',
+        section: course.section || '',
+        alternateLink: course.alternateLink || null,
+      })),
+      materials: classroomMaterials,
+      tasks,
+      grades,
+      gradeError,
+    });
   } catch (error) {
     console.error('Google Classroom fetch error:', error);
     return res.status(500).json({

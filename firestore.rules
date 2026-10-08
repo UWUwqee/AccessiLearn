@@ -24,15 +24,34 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == "ftluzano@paterostechnologicalcollege.edu.ph" ||
-        request.auth.token.email == "kyledesillarico@gmail.com" ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        request.auth.token.email == "ftluzano@paterostechnologicalcollege.edu.ph";
+    }
+
+    function hasRole(role) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isInstructor() {
+      return isAdmin() || hasRole('instructor');
+    }
+
+    function isResearcher() {
+      return isAdmin() || hasRole('researcher');
     }
 
     function isValidRole(data) {
       return data.role is string && data.role in ['learner', 'instructor', 'researcher', 'admin'];
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['title', 'content', 'author', 'authorId', 'date']) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+        data.content is string && data.content.size() > 0 && data.content.size() <= 4000 &&
+        data.author is string && data.author.size() <= 100 &&
+        data.authorId == request.auth.uid &&
+        data.date is string;
     }
 
     // Validation for Learner Profile
@@ -80,7 +99,9 @@ service cloud.firestore {
     // Validation for Submissions
     function isValidSubmission(data) {
       return data.keys().hasAll(['activity_id', 'learner_id', 'response_text']) &&
+             data.keys().hasOnly(['activity_id', 'learner_id', 'response_text', 'activity_title', 'learner_name', 'attachment_name', 'submitted_at', 'status']) &&
              data.learner_id == request.auth.uid &&
+             (!data.keys().hasAny(['status']) || data.status == 'submitted') &&
              data.activity_id is string && data.activity_id.size() <= 64 &&
              data.response_text is string && data.response_text.size() <= 3000;
     }
@@ -101,11 +122,13 @@ service cloud.firestore {
         request.auth.uid == userId &&
         incoming().keys().hasOnly(['id', 'learner_name', 'email', 'role', 'isOnline', 'lastSeenAt', 'createdAt']) &&
         incoming().email == request.auth.token.email &&
-        incoming().role in ['learner', 'admin'] &&
-        isValidRole(incoming());
+        isValidRole(incoming()) &&
+        (incoming().role == 'learner' || (isAdmin() && incoming().role == 'admin'));
       allow update: if isSignedIn() && (
-        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'email', 'isOnline', 'lastSeenAt'])) ||
-        isAdmin()
+        (request.auth.uid == userId && incoming().email == request.auth.token.email &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'email', 'isOnline', 'lastSeenAt'])) ||
+        (isAdmin() && incoming().role in ['learner', 'instructor', 'researcher'] &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt', 'isResearcher']))
       );
       allow delete: if isAdmin();
     }
@@ -114,9 +137,10 @@ service cloud.firestore {
     match /learners/{learnerId} {
       allow get: if isSignedIn() && (request.auth.uid == learnerId || isAdmin());
       allow list: if isSignedIn() && isAdmin();
-      allow create: if isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming());
+      allow create: if (isSignedIn() && request.auth.uid == learnerId && isValidLearner(incoming())) ||
+        (isAdmin() && incoming().keys().hasOnly(['role', 'isResearcher']));
       allow update: if isSignedIn() && (
-        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'profile_setup_completed', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'role', 'createdAt'])) ||
+        (request.auth.uid == learnerId && isValidLearner(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['learner_name', 'educational_need', 'grade_level', 'profile_setup_completed', 'assistive_tech', 'experience_level', 'email', 'isResearcher', 'createdAt'])) ||
         isAdmin()
       );
       allow delete: if isAdmin();
@@ -131,24 +155,24 @@ service cloud.firestore {
 
     // 3. Accessibility Assessments
     match /accessibility_assessments/{assessmentId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
+      allow get: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
+      allow list: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidAssessment(incoming());
       allow update, delete: if isAdmin();
     }
 
     // 4. UX Evaluations
     match /user_experience_evaluations/{evalId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
+      allow get: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
+      allow list: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidUXEval(incoming());
       allow update, delete: if isAdmin();
     }
 
     // 5. Feedbacks
     match /feedbacks/{feedbackId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
+      allow get: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
+      allow list: if isSignedIn() && (isResearcher() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidFeedback(incoming());
       allow update, delete: if isAdmin();
     }
@@ -156,27 +180,33 @@ service cloud.firestore {
     // 6. Activities
     match /activities/{activityId} {
       allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isInstructor();
     }
 
     // 7. Announcements
     match /announcements/{announcementId} {
       allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isAdmin();
+      allow create: if isInstructor() && isValidAnnouncement(incoming());
+      allow update: if isAdmin() ||
+        (isInstructor() && existing().authorId == request.auth.uid &&
+          incoming().authorId == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'date']) &&
+          isValidAnnouncement(incoming()));
+      allow delete: if isAdmin() ||
+        (isInstructor() && existing().authorId == request.auth.uid);
     }
 
     // 8. Submissions
     match /submissions/{submissionId} {
-      allow get: if isSignedIn() && (resource.data.learner_id == request.auth.uid || isAdmin());
-      allow list: if isSignedIn() && (isAdmin() || resource.data.learner_id == request.auth.uid);
+      allow get: if isSignedIn() && (resource.data.learner_id == request.auth.uid || isInstructor());
+      allow list: if isSignedIn() && (isInstructor() || resource.data.learner_id == request.auth.uid);
       allow create: if isSignedIn() && isValidSubmission(incoming());
       allow update: if isSignedIn() && (
-        (resource.data.learner_id == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['response_text', 'attachment_name', 'submitted_at', 'status', 'feedback'])) ||
-        isAdmin()
+        (resource.data.learner_id == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['response_text', 'attachment_name'])) ||
+        (isInstructor() && incoming().diff(existing()).affectedKeys().hasOnly(['score', 'feedback', 'status', 'graded_at']) &&
+          incoming().status == 'graded' && incoming().score is number && incoming().score >= 0)
       );
-      allow delete: if isAdmin();
+      allow delete: if isInstructor();
     }
 
     // 9. Messages

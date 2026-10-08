@@ -1,25 +1,29 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { ClassroomGrade, CourseActivity, LearnerProfile, Role } from '../types';
+import { ClassroomCourse, ClassroomGrade, ClassroomMaterial, CourseActivity, LearnerProfile, Role } from '../types';
 import { initializeFirestoreDefaults } from '../services/dbInit';
 
 const GOOGLE_TOKEN_KEY = 'accessilearn_google_token';
 const ONLINE_STATUS_PERSISTENCE_SECONDS = 30;
 
 const ADMIN_EMAIL = 'ftluzano@paterostechnologicalcollege.edu.ph';
+type AssignableRole = Exclude<Role, 'admin'>;
 
 interface AuthContextType {
   user: User | null;
   learnerProfile: LearnerProfile | null;
+  classroomCourses: ClassroomCourse[];
   classroomActivities: CourseActivity[];
   classroomGrades: ClassroomGrade[];
+  classroomMaterials: ClassroomMaterial[];
   isClassroomSyncing: boolean;
   classroomLastSync: string | null;
   isLoading: boolean;
   authError: string | null;
   isAdmin: boolean;
+  setAssignedRole: (userId: string, role: AssignableRole) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   syncGoogleClassroom: () => Promise<void>;
   updateLearnerProfile: (data: Partial<LearnerProfile>) => Promise<void>;
@@ -63,6 +67,7 @@ const formatClassroomDate = (value?: { year?: number; month?: number; day?: numb
 const normalizeClassroomTasks = (tasks: any[]): CourseActivity[] =>
   tasks.map((task, index) => ({
     id: task.id || `classroom-${index}`,
+    courseId: task.courseId || '',
     title: task.title || 'Untitled activity',
     module: task.module || 'Google Classroom',
     instructions: task.instructions || 'No description provided for this activity yet.',
@@ -75,6 +80,7 @@ const normalizeClassroomTasks = (tasks: any[]): CourseActivity[] =>
 const normalizeClassroomGrades = (grades: any[]): ClassroomGrade[] =>
   grades.map((grade, index) => ({
     id: grade.id || `classroom-grade-${index}`,
+    courseId: grade.courseId || '',
     course: grade.course || 'Google Classroom',
     title: grade.title || 'Untitled activity',
     due_date: grade.due_date || 'No due date',
@@ -85,12 +91,16 @@ const normalizeClassroomGrades = (grades: any[]): ClassroomGrade[] =>
   }));
 
 const getRoleForEmail = (email?: string | null): Role => email === ADMIN_EMAIL ? 'admin' : 'learner';
+const isAssignableRole = (role: unknown): role is AssignableRole =>
+  role === 'learner' || role === 'instructor' || role === 'researcher';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
+  const [classroomCourses, setClassroomCourses] = useState<ClassroomCourse[]>([]);
   const [classroomActivities, setClassroomActivities] = useState<CourseActivity[]>([]);
   const [classroomGrades, setClassroomGrades] = useState<ClassroomGrade[]>([]);
+  const [classroomMaterials, setClassroomMaterials] = useState<ClassroomMaterial[]>([]);
   const [isClassroomSyncing, setIsClassroomSyncing] = useState(false);
   const [classroomLastSync, setClassroomLastSync] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -113,8 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           await initializeFirestoreDefaults();
 
-          const role = getRoleForEmail(currentUser.email);
           const userRef = doc(db, 'users', currentUser.uid);
+          const userSnapshot = await getDoc(userRef);
+          const storedRole = userSnapshot.data()?.role;
+          const role = currentUser.email === ADMIN_EMAIL
+            ? 'admin'
+            : isAssignableRole(storedRole) ? storedRole : 'learner';
           const authProfile: LearnerProfile = {
             id: currentUser.uid,
             learner_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Learner',
@@ -129,21 +143,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             createdAt: new Date().toISOString(),
           };
 
-          await setDoc(userRef, {
+          const userDirectoryProfile = {
             id: currentUser.uid,
             learner_name: authProfile.learner_name,
             email: authProfile.email,
-            role,
             isOnline: true,
             lastSeenAt: new Date().toISOString(),
-            createdAt: authProfile.createdAt,
-          }, { merge: true });
+          };
+          if (userSnapshot.exists()) {
+            await setDoc(userRef, userDirectoryProfile, { merge: true });
+          } else {
+            await setDoc(userRef, {
+              ...userDirectoryProfile,
+              role,
+              createdAt: authProfile.createdAt,
+            });
+          }
 
           const ref = doc(db, 'learners', currentUser.uid);
           const snap = await getDoc(ref);
           if (snap.exists()) {
             const data = snap.data() as LearnerProfile;
-            setLearnerProfile({ ...data, ...authProfile, id: currentUser.uid, profile_setup_completed: data.profile_setup_completed ?? false });
+            setLearnerProfile({
+              ...authProfile,
+              ...data,
+              id: currentUser.uid,
+              role,
+              isResearcher: role === 'researcher' || role === 'admin',
+              profile_setup_completed: data.profile_setup_completed ?? false,
+            });
           } else {
             await setDoc(ref, authProfile);
             setLearnerProfile(authProfile);
@@ -182,8 +210,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       } else {
         setLearnerProfile(null);
+        setClassroomCourses([]);
         setClassroomActivities([]);
         setClassroomGrades([]);
+        setClassroomMaterials([]);
         setClassroomLastSync(null);
       }
       setIsLoading(false);
@@ -191,6 +221,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    return onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+      const role: Role = user.email === ADMIN_EMAIL
+        ? 'admin'
+        : isAssignableRole(snapshot.data()?.role) ? snapshot.data()?.role : 'learner';
+      setLearnerProfile((profile) => profile
+        ? { ...profile, role, isResearcher: role === 'researcher' || role === 'admin' }
+        : profile);
+    }, (error) => {
+      console.error('Role subscription error:', error);
+      setAuthError('Your account role could not be refreshed. Please reload the page.');
+    });
+  }, [user]);
 
   const syncGoogleClassroom = async () => {
     const activeEmail = user?.email || auth.currentUser?.email;
@@ -219,8 +265,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(classroomData.error || 'Unable to load Google Classroom activity.');
       }
 
+      setClassroomCourses(classroomData.courses || []);
       setClassroomActivities(normalizeClassroomTasks(classroomData.tasks || []));
       setClassroomGrades(normalizeClassroomGrades(classroomData.grades || []));
+      setClassroomMaterials(classroomData.materials || []);
       setAuthError(classroomData.gradeError || null);
       setClassroomLastSync(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     } catch (error: any) {
@@ -277,6 +325,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const setAssignedRole = async (userId: string, role: AssignableRole) => {
+    if (!user || user.email !== ADMIN_EMAIL || userId === user.uid || !isAssignableRole(role)) {
+      throw new Error('Only the primary administrator can assign roles to other accounts.');
+    }
+
+    const batch = writeBatch(db);
+    const roleData = {
+      role,
+      isResearcher: role === 'researcher',
+      updatedAt: new Date().toISOString(),
+    };
+    batch.update(doc(db, 'users', userId), roleData);
+    batch.set(doc(db, 'learners', userId), {
+      role,
+      isResearcher: role === 'researcher',
+    }, { merge: true });
+    await batch.commit();
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -285,6 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLearnerProfile(null);
       setClassroomActivities([]);
       setClassroomGrades([]);
+      setClassroomCourses([]);
+      setClassroomMaterials([]);
       setClassroomLastSync(null);
       if (auth.currentUser?.uid) {
         await setDoc(doc(db, 'users', auth.currentUser.uid), { isOnline: false, lastSeenAt: new Date().toISOString() }, { merge: true });
@@ -294,20 +363,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const isAdmin = Boolean(user && learnerProfile?.role === 'admin');
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   return (
     <AuthContext.Provider
       value={{
         user,
         learnerProfile,
+        classroomCourses,
         classroomActivities,
         classroomGrades,
+        classroomMaterials,
         isClassroomSyncing,
         classroomLastSync,
         isLoading,
         authError,
         isAdmin,
+        setAssignedRole,
         loginWithGoogle,
         syncGoogleClassroom,
         updateLearnerProfile,
