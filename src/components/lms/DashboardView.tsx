@@ -41,7 +41,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenSurvey,
   onOpenAccessibility,
 }) => {
-  const { learnerProfile, updateLearnerProfile, user, classroomActivities, isClassroomSyncing, classroomLastSync, syncGoogleClassroom } = useAuth();
+  const { learnerProfile, updateLearnerProfile, user, classroomActivities, isClassroomSyncing, classroomLastSync, syncGoogleClassroom, authError } = useAuth();
   const { speakText } = useAccessibility();
 
   const [announcements, setAnnouncements] = useState<AnnouncementDoc[]>([]);
@@ -63,11 +63,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         due: activity.due_date,
         accent: 'bg-indigo-500',
       }))
-    : [
-        { course: 'Introduction to Inclusive Design', update: 'New assignment posted', due: 'Due tomorrow', accent: 'bg-indigo-500' },
-        { course: 'Assistive Technology Lab', update: 'Instructor shared accessibility checklist', due: 'Due Friday', accent: 'bg-emerald-500' },
-        { course: 'Academic Writing for Accessibility', update: 'Recorded lecture added', due: 'Due next Monday', accent: 'bg-amber-500' },
-      ];
+    : [];
 
   useEffect(() => {
     try {
@@ -102,8 +98,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      <div className="rounded-[28px] border border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 p-6 text-white shadow-2xl shadow-slate-900/20">
+    <div className="space-y-6 animate-fade-up">
+      <div className="dashboard-hero rounded-[28px] border border-slate-200 p-6 text-white shadow-2xl shadow-slate-900/20 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
@@ -114,21 +110,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Welcome back, {learnerProfile?.learner_name || 'Learner'}.
             </h1>
             <p className="text-sm text-slate-300">
-              {learnerProfile?.educational_need || 'Special educational support'} • {learnerProfile?.grade_level || 'Student'} • {user?.email || 'No Google account connected'}
+              <span>{learnerProfile?.educational_need || 'Personal learning support'}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{learnerProfile?.grade_level || 'Student'}</span>
             </p>
+            <p className="text-xs text-slate-400">{user?.email || 'No Google account connected'}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               onClick={onOpenAccessibility}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="soft-hover inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             >
               <SlidersHorizontal className="h-4 w-4 text-amber-300" />
               Accessibility controls
             </button>
             <button
               onClick={onOpenSurvey}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200"
+              className="soft-hover inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200"
             >
               <FileCheck2 className="h-4 w-4" />
               Evaluation survey
@@ -137,23 +136,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-indigo-500/20 bg-slate-900/60 p-4">
+          <div className="dashboard-inset rounded-2xl border border-indigo-500/20 p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Google Classroom</p>
-                <p className="mt-2 text-lg font-bold text-white">{classroomActivities.length ? 'Connected and syncing' : 'No classroom activity yet'}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-200">Google Classroom</p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  {!classroomLastSync ? 'Ready to sync' : classroomActivities.length ? 'Coursework is up to date' : 'No published coursework found'}
+                </p>
               </div>
               <button
                 onClick={syncGoogleClassroom}
                 disabled={isClassroomSyncing}
-                className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300 transition hover:bg-emerald-500/15 disabled:opacity-60"
+                className="soft-hover rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/15 disabled:opacity-60"
               >
-                {isClassroomSyncing ? 'Syncing...' : classroomActivities.length ? 'Refresh' : 'Sync'}
+                {isClassroomSyncing ? 'Syncing...' : classroomLastSync ? 'Refresh' : 'Sync now'}
               </button>
             </div>
 
             <div className="mt-4 space-y-3">
-              {classroomFeed.map((item) => (
+              {authError && (
+                <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                  {authError}
+                </p>
+              )}
+              {classroomFeed.length ? classroomFeed.map((item) => (
                 <div key={`${item.course}-${item.update}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950/50 p-3">
                   <div className="flex items-center gap-3">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.accent}`} />
@@ -164,7 +170,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300">{item.due}</span>
                 </div>
-              ))}
+              )) : (
+                <div className="rounded-xl border border-dashed border-slate-700 px-4 py-5 text-sm text-slate-300">
+                  {classroomLastSync
+                    ? 'Nothing to display yet. Published coursework will appear here after a successful sync.'
+                    : 'Sync your Google Classroom account to see published coursework here.'}
+                </div>
+              )}
             </div>
 
             <div className="mt-3 flex items-center justify-between border-t border-slate-700 pt-3 text-[11px] text-slate-300">
@@ -173,7 +185,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="dashboard-inset rounded-2xl border border-slate-700 p-4 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profile summary</p>
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700 p-3">
@@ -210,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             key={label}
             onClick={action}
-            className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+            className="dashboard-action soft-hover rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-md"
           >
             <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
               <Icon className="h-5 w-5" />
@@ -239,7 +251,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-3">
             {classroomActivities.length ? (
               classroomActivities.slice(0, 4).map((act) => (
-                <div key={act.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div key={act.id} className="soft-hover rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
                       {act.points} pts
@@ -287,7 +299,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </section>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="dashboard-section rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             <Bell className="h-5 w-5 text-indigo-600" />
@@ -308,7 +320,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-xs text-slate-500">No announcements posted yet.</p>
           ) : (
             announcements.slice(0, 3).map((ann) => (
-              <article key={ann.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <article key={ann.id} className="soft-hover rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="rounded-full bg-indigo-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700">
                     {ann.author}

@@ -26,13 +26,14 @@ export const AuthScreen: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050816] text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.28),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.18),_transparent_28%)]" />
+    <div className="auth-shell min-h-screen text-white relative overflow-hidden">
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      <div className="absolute -left-20 top-20 h-72 w-72 animate-float rounded-full bg-indigo-500/20 blur-3xl" />
+      <div className="absolute bottom-10 right-0 h-80 w-80 animate-float rounded-full bg-cyan-500/15 blur-3xl" style={{ animationDelay: '1.5s' }} />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-4 py-10 lg:px-8">
         <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-8">
+          <div className="animate-fade-up space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">
               <ShieldCheck className="h-3.5 w-3.5" />
               Inclusive learning platform
@@ -59,21 +60,21 @@ export const AuthScreen: React.FC = () => {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+              <div className="soft-hover glass-card rounded-2xl p-4">
                 <div className="mb-2 flex items-center gap-2 text-indigo-300">
                   <BookOpenText className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-[0.2em]">Courses</span>
                 </div>
                 <p className="text-2xl font-black text-white">12+</p>
               </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+              <div className="soft-hover glass-card rounded-2xl p-4">
                 <div className="mb-2 flex items-center gap-2 text-emerald-300">
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-[0.2em]">Sync</span>
                 </div>
                 <p className="text-2xl font-black text-white">Live</p>
               </div>
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+              <div className="soft-hover glass-card rounded-2xl p-4">
                 <div className="mb-2 flex items-center gap-2 text-amber-300">
                   <Accessibility className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-[0.2em]">Support</span>
@@ -83,10 +84,10 @@ export const AuthScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-indigo-950/40 backdrop-blur-sm">
+          <div className="auth-panel animate-fade-up rounded-[28px] p-6 shadow-2xl shadow-indigo-950/40">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg shadow-indigo-500/30">
+                <div className="animate-pulse-glow flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg shadow-indigo-500/30">
                   <GraduationCap className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -111,7 +112,7 @@ export const AuthScreen: React.FC = () => {
                 type="button"
                 onClick={handleGoogleConnect}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-lg shadow-slate-950/30 transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500 disabled:opacity-70"
+                className="shimmer-button flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-lg shadow-slate-950/30 transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500 disabled:opacity-70"
                 aria-label="Connect to Google"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
