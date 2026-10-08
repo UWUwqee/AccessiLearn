@@ -20,9 +20,9 @@ export const AuthScreen: React.FC = () => {
   };
 
   const keyBenefits = [
-    'Institutional Google Workspace and personal Gmail support',
-    'Google Classroom activity sync and learning updates',
-    'Accessibility-first experience for students with disabilities',
+    'School or personal Google sign-in',
+    'Google Classroom activity tracking',
+    'Accessibility-first support tools',
   ];
 
   return (
@@ -40,11 +40,10 @@ export const AuthScreen: React.FC = () => {
 
             <div className="space-y-5">
               <h1 className="max-w-xl text-4xl font-black tracking-tight text-white md:text-6xl">
-                AccessiLearn for learners with disabilities.
+                AccessiLearn
               </h1>
               <p className="max-w-xl text-base text-slate-300 md:text-lg">
-                Designed for students who need accessible, structured support. Connect a school or personal Google account,
-                sync classroom activity, and keep learning progress visible in one focused dashboard.
+                A support platform for learners with disabilities.
               </p>
             </div>
 
@@ -102,9 +101,9 @@ export const AuthScreen: React.FC = () => {
 
             <div className="space-y-4">
               <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Google account connection</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Connect your account</p>
                 <p className="mt-2 text-sm text-slate-200">
-                  Sign in with either an institutional Google Workspace account or a personal Gmail account.
+                  Use your school or personal Google account to access your learning dashboard.
                 </p>
               </div>
 
